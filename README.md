@@ -32,11 +32,11 @@ Fortunately there's a patch for that and other problems.
 
 ### What doesn't work
 
-- :x: Fingerprint Reader
-- :x: Touchscreen
-- :x: Fn Keys (some)
-- :x: Keyboard (no dumb mode)
-- :x: Fan speed
+- :x: Fingerprint Reader, See [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
+- :x: Touchscreen, See [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
+- :x: Fn Keys (some), See  [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
+- :x: Keyboard (no dumb mode), See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
+- :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
 
 ### Tested Linux Distributions
 
@@ -55,7 +55,7 @@ Add following boot parameter to the kernel commandline to fix keyboard and sound
 i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=1
 ```
 
-See: #1 #2
+See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1) [#2](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/2)
 
 How to set boot parameter: [google](https://www.google.com/search?q=How+do+I+add+a+linux+kernel+boot+parameter)
 
@@ -77,7 +77,7 @@ SUBSYSTEM=="input", ATTRS{name}=="GXT7863:00 27C6:01E0 UNKNOWN", RUN+="/bin/sh -
 
 And reboot.
 
-See: #3
+See: [#3](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/3)
 
 ## Problems and how to solve them
 
