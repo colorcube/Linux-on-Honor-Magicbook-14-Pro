@@ -28,6 +28,7 @@ Fortunately there's a patch for this and other problems.
 - :heavy_check_mark: Bluetooth
 - :heavy_check_mark: Webcam
 - :heavy_check_mark: Fan control
+- :heavy_check_mark: Lid switch
 - :heavy_check_mark: Suspend/Resume
 
 ### What doesn't work
