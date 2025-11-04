@@ -1,20 +1,19 @@
 # Linux on Honor Magicbook 14 Pro
 
-This repository keep a record of whatever needs to be done to make the Honor Magicbook 14 Pro laptop work with Linux.
+This repository contains a record of all the steps required to get the Honor Magicbook 14 Pro laptop working with Linux.
 
-While problems (and solutions) might be discussed and tracked in this repository, it is not meant to provide code, 
-but organize things and provide the needed information one needs to run Linux on this machine.
+While issues (and solutions) can be discussed and tracked in this repository, its purpose is not to provide code, but rather to organize things and provide the necessary information needed to run Linux on this device.
 
 
 ## Status
 
 Since october 2025 it is possible to run Linux as a daily driver by appliying some tweaks.
 
-The main problem is that the BIOS (v1.13) has broken ACPI tables (DSDT). 
-Those tables gives information about the hardware of the machine so Linux can find and use the hardware components. 
-That works when the ACPI tables are correct and Linux has drivers for the hardware. Because the current tables are not correct, Linux can't find all hardware.
+The main problem is that the BIOS (v1.13) contains faulty ACPI tables (DSDT). 
+These tables provide information about the computer's hardware so that Linux can find and use the hardware components. 
+This works if the ACPI tables are correct and Linux has drivers for the hardware. Since the current tables are not correct, Linux cannot find all of the hardware.
 
-Fortunately there's a patch for that and other problems.
+Fortunately there's a patch for this and other problems.
 
 ### What works (with tweaks)
 
