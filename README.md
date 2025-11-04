@@ -70,11 +70,7 @@ https://github.com/denis-bb/honor-fmb-p-dsdt
 
 Disable a weird device which causes the screen to go dark and to full brightness:
 
-Add a udev rule to disable the device by adding following file: ```/etc/udev/rules.d/99-ignore-touchpad-device.rules``` with this content:
-
-```
-SUBSYSTEM=="input", ATTRS{name}=="GXT7863:00 27C6:01E0 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"
-```
+Add a udev rule to disable the device by adding following file: [/etc/udev/rules.d/99-ignore-touchpad-device.rules](etc/udev/rules.d/99-ignore-touchpad-device.rules)
 
 And reboot.
 
