@@ -25,6 +25,7 @@ Fortunately there's a patch for this and other problems.
 - :heavy_check_mark: Fn Keys (some)
 - :heavy_check_mark: Touchpad
 - :heavy_check_mark: Audio
+- :heavy_check_mark: Bluetooth
 - :heavy_check_mark: Webcam
 - :heavy_check_mark: Fan control
 - :heavy_check_mark: Suspend/Resume
