@@ -55,7 +55,7 @@ Add following boot parameter to the kernel commandline to fix keyboard and sound
 i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=1
 ```
 
-See: todo, todo
+See: #1 #2
 
 How to set boot parameter: [google](https://www.google.com/search?q=How+do+I+add+a+linux+kernel+boot+parameter)
 
@@ -77,7 +77,7 @@ SUBSYSTEM=="input", ATTRS{name}=="GXT7863:00 27C6:01E0 UNKNOWN", RUN+="/bin/sh -
 
 And reboot.
 
-See: todo
+See: #3
 
 ## Problems and how to solve them
 
