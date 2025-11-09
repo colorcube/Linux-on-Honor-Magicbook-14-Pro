@@ -37,7 +37,7 @@ Fortunately there's a patch for this and other problems.
 - :x: Touchscreen, See [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
 - :x: Keyboard (no dumb mode), See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
 - :x: Fn Keys (some), See [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
-- :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)?
+- :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
 - :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
 - :x: Power button, See: [#8](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/8)
 - :x: Respect battery tresholds, See: [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
