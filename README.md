@@ -35,9 +35,11 @@ Fortunately there's a patch for this and other problems.
 
 - :x: Fingerprint Reader, See [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
 - :x: Touchscreen, See [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
-- :x: Fn Keys (some), See  [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
 - :x: Keyboard (no dumb mode), See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
+- :x: Fn Keys (some), See [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
+- :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)?
 - :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
+- :x: Power button, See: [#8](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/8)
 
 ### Tested Linux Distributions
 
@@ -53,7 +55,7 @@ KDE 6.5.1
 Add following boot parameter to the kernel commandline to fix keyboard and sound:
 
 ```
-i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=1
+i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=3 snd-hda-intel.model=generic
 ```
 
 See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1) [#2](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/2)
@@ -68,7 +70,8 @@ https://github.com/denis-bb/honor-fmb-p-dsdt
 
 ### 3. Screen brightness
 
-Disable a weird device which causes the screen to go dark and to full brightness:
+With some kernel version a weird device is present which changes screen brightnes.
+Disable the weird device which causes the screen to go dark and to full brightness:
 
 Add a udev rule to disable the device by adding following file: [/etc/udev/rules.d/99-ignore-touchpad-device.rules](etc/udev/rules.d/99-ignore-touchpad-device.rules)
 
