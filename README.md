@@ -40,6 +40,7 @@ Fortunately there's a patch for this and other problems.
 - :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)?
 - :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
 - :x: Power button, See: [#8](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/8)
+- :x: Respect battery tresholds, See: [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
 
 ### Tested Linux Distributions
 
