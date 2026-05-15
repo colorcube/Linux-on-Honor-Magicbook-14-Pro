@@ -15,13 +15,12 @@ This works if the ACPI tables are correct and Linux has drivers for the hardware
 
 Fortunately there's a patch for this and other problems.
 
-### What works (with tweaks)
+### What works
 
 - :heavy_check_mark: Native screen resolution
 - :heavy_check_mark: Graphics hardware
 - :heavy_check_mark: Wifi
 - :heavy_check_mark: USB-C (screen, ethernet, hid, etc…)
-- :heavy_check_mark: Keyboard (dumb mode)
 - :heavy_check_mark: Fn Keys (some)
 - :heavy_check_mark: Touchpad
 - :heavy_check_mark: Audio
@@ -31,11 +30,14 @@ Fortunately there's a patch for this and other problems.
 - :heavy_check_mark: Lid switch
 - :heavy_check_mark: Suspend/Resume
 
+### What works (with tweaks)
+
+- :heavy_check_mark: Keyboard, Works with kernel 6.19: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
+- :heavy_check_mark: Fingerprint Reader, See [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
+
 ### What doesn't work
 
-- :x: Fingerprint Reader, See [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
 - :x: Touchscreen, See [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
-- :x: Keyboard (no dumb mode), See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
 - :x: Fn Keys (some), See [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
 - :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
 - :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
@@ -44,16 +46,15 @@ Fortunately there's a patch for this and other problems.
 
 ### Tested Linux Distributions
 
-#### Fedora 43
+#### Fedora 43, 44
 
-Kernel 6.18.0-0
-KDE 6.5.1
+Kernel 6.18, 6.19 (Keyboard works)
 
 ## Quickstart
 
 ### 1. Keyboard and Sound
 
-Add following boot parameter to the kernel commandline to fix keyboard and sound:
+If your kernel is below 7.0 you might need following boot parameter to the kernel commandline to fix keyboard and sound:
 
 ```
 i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=3 snd-hda-intel.model=generic
