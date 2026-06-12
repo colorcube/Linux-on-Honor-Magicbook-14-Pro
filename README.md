@@ -32,17 +32,23 @@ Fortunately there's a patch for this and other problems.
 
 ### What works (with tweaks)
 
+Working scripts/patches for the items below are collected in [`fixes/`](fixes/).
+
 - :heavy_check_mark: Keyboard, Works with kernel 6.19: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
-- :heavy_check_mark: Fingerprint Reader, See [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
+- :heavy_check_mark: Fingerprint Reader (FPC 10a5:9924), libfprint patch: [`fixes/fingerprint`](fixes/fingerprint/) — [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
+- :heavy_check_mark: Touchscreen (FocalTech FTSC1000), GPIO power + acpi_call: [`fixes/touchscreen`](fixes/touchscreen/) — [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
+- :heavy_check_mark: Fn Keys, patched huawei-wmi: [`fixes/fn-keys`](fixes/fn-keys/) — [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
+- :heavy_check_mark: Fan speed readout, hwmon module: [`fixes/fan`](fixes/fan/) — [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
+- :heavy_check_mark: Battery charge thresholds (honoured by EC): [`fixes/battery`](fixes/battery/) — [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
+- :heavy_check_mark: Caps-Lock LED (kernel ≥ 7.0) and Mic-mute key LED: [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
+- :heavy_check_mark: Performance profiles via power-profiles-daemon (CPU EPP); Fn+P switches the EC platform mode
+- :heavy_check_mark: Hibernate / suspend-then-hibernate (S4) — works; useful since S3 is unavailable
 
 ### What doesn't work
 
-- :x: Touchscreen, See [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
-- :x: Fn Keys (some), See [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
-- :x: LED on Caps-Lock and Mic key, See [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
-- :x: Fan speed, See: [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
 - :x: Power button, See: [#8](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/8)
-- :x: Respect battery tresholds, See: [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
+- :x: S3 deep sleep — vestigial on Arrow Lake-H (Windows has no S3 either); only s2idle. See [`fixes/README.md`](fixes/README.md)
+- :x: IR camera / face unlock — not present in hardware on the 2025 model (RGB webcam only)
 
 ### Tested Linux Distributions
 
@@ -81,6 +87,11 @@ And reboot.
 
 See: [#3](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/3)
 
+### 4. Other hardware (touchscreen, Fn keys, fan readout, fingerprint, battery)
+
+See the [`fixes/`](fixes/) directory for working scripts, a small hwmon kernel
+module, and patches, each with its own README and install steps.
+
 ## Problems and how to solve them
 
 Have a look at the [Github issues](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues).
@@ -98,7 +109,9 @@ Family: HONOR MagicBook
 
 ### Latest Bios
 
-BIOS version 1.13 (release date 05/08/2025)
+BIOS version 1.13 (release date 05/08/2025).
+BIOS 1.16 has also been tested — same DSDT bug, the same patched DSDT approach
+applies (the `\_S3` package is likewise present-but-gated; see [`fixes/`](fixes/)).
 
 ### Hardware
 

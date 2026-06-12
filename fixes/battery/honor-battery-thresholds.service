@@ -1,0 +1,11 @@
+[Unit]
+Description=Restore battery charge thresholds (Honor FMB-P)
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo "60 80" > /sys/devices/platform/huawei-wmi/charge_control_thresholds'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
