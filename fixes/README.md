@@ -18,6 +18,11 @@ is assumed to be applied first — it's the prerequisite for most of the below.
 | Suspend (s2idle) | ✅ working | only supported suspend; see S3 finding below |
 | Hibernate / suspend-then-hibernate | ✅ working | S4 hibernate works (e.g. encrypted swapfile + `resume=`); use it for low standby drain since S3 is unavailable |
 
+For *why* each shimmed device needs a shim — the annotated ACPI `_DSM` /
+device-init traces (touchscreen, fingerprint, EC) and the `_OSI`/`OSYS`
+Windows-gating that explains the "works on Windows out of the box" gap — see
+[`acpi-dsm-notes.md`](acpi-dsm-notes.md).
+
 ## Findings (hardware/firmware limits — not fixable in Linux)
 
 - **No S3 deep sleep.** The DSDT contains a valid `\_S3` package but it's gated
