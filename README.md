@@ -92,6 +92,25 @@ See: [#3](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/3)
 See the [`fixes/`](fixes/) directory for working scripts, a small hwmon kernel
 module, and patches, each with its own README and install steps.
 
+### 5. One-shot install (fresh system)
+
+[`install.sh`](install.sh) applies everything from a fresh install — including
+the DSDT override, built from **your own** firmware dump with the
+[denis-bb patch](https://github.com/denis-bb/honor-fmb-p-dsdt) and hard
+safety checks (aborts if the patch doesn't apply or doesn't recompile
+cleanly; refuses to run under Secure Boot; keeps stock-ACPI rescue paths):
+
+```sh
+sudo ./install.sh            # everything; or --only battery,driver,…
+sudo ./install.sh --status   # what's installed
+sudo ./install.sh --uninstall
+```
+
+Verified on CachyOS (Arch family, mkinitcpio/limine). The dracut (Fedora) and
+initramfs-tools+GRUB (Debian/Ubuntu) branches are best-effort — review them
+before trusting, and report back. Fingerprint stays manual
+([`fixes/fingerprint/`](fixes/fingerprint/) — needs a libfprint rebuild).
+
 ## Problems and how to solve them
 
 Have a look at the [Github issues](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues).

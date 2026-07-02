@@ -1,0 +1,14 @@
+#!/bin/bash
+# Honor MagicBook 14 Pro (FMB-P): the BIOS DSDT aborts at load (bad NFC0
+# module-level code), killing battery/touchpad/thermal/USB-C. Prepend a
+# patched DSDT as an uncompressed ACPI-override cpio to the initramfs.
+# The -lts image is left stock as a rescue entry.
+# Args from mkinitcpio: $1 = kernel image, $2... = generated initramfs images.
+cpio=/etc/acpi-override/acpi-override.cpio
+[[ -f $cpio ]] || exit 0
+for img in "${@:2}"; do
+    [[ -f $img ]] || continue
+    [[ $img == *-lts* ]] && continue
+    cat "$cpio" "$img" > "$img.acpitmp" && mv "$img.acpitmp" "$img"
+done
+exit 0
