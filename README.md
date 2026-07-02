@@ -39,7 +39,7 @@ Working scripts/patches for the items below are collected in [`fixes/`](fixes/).
 - :heavy_check_mark: Touchscreen (FocalTech FTSC1000), GPIO power + acpi_call: [`fixes/touchscreen`](fixes/touchscreen/) — [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
 - :heavy_check_mark: Fn Keys, patched huawei-wmi: [`fixes/fn-keys`](fixes/fn-keys/) — [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
 - :heavy_check_mark: Fan speed readout, hwmon module: [`fixes/fan`](fixes/fan/) — [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
-- :heavy_check_mark: Battery charge thresholds (honoured by EC): [`fixes/battery`](fixes/battery/) — [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
+- :heavy_check_mark: Battery charge thresholds, driver patch + arming sequence (plain huawei-wmi stores but does **not** enforce them): [`fixes/battery`](fixes/battery/) — [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10)
 - :heavy_check_mark: Caps-Lock LED (kernel ≥ 7.0) and Mic-mute key LED: [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
 - :heavy_check_mark: Performance profiles via power-profiles-daemon (CPU EPP); Fn+P switches the EC platform mode
 - :heavy_check_mark: Hibernate / suspend-then-hibernate (S4) — works; useful since S3 is unavailable

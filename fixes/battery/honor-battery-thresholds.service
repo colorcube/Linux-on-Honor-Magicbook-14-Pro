@@ -4,7 +4,7 @@ After=systemd-modules-load.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'echo "60 80" > /sys/devices/platform/huawei-wmi/charge_control_thresholds'
+ExecStart=/usr/local/sbin/honor-battery-thresholds.sh
 RemainAfterExit=yes
 
 [Install]
