@@ -2,78 +2,68 @@
 
 Relates to issues #10 / #17.
 
-## Finding (corrected 2026-07-02)
+## The actual mechanism (second correction, 2026-07-02 — verified on hardware)
 
-An earlier version of this page claimed the thresholds written through
-`huawei-wmi` were honoured by the EC. **That was wrong** — the EC *stores*
-them but does not *enforce* them, and the laptop still charges to 100%.
+Two earlier versions of this page were wrong (first "thresholds just work",
+then "arm SBAD+SBCM"). The real behaviour, established by experiment on
+FMB-P BIOS 1.16:
 
-`huawei-wmi` only issues WMI command `0x1003` (ACPI `\SBTT`), which writes the
-start/stop percentages into EC registers `0x80`/`0x81`. Enforcement requires
-the sequence Honor PC Manager uses on Windows — **both** steps, in order:
+**The EC validates the (start, stop) threshold *pair* against Honor PC
+Manager's presets.** Write a recognized pair into EC regs `0x80`/`0x81`
+(what `huawei-wmi`'s normal `\SBTT` path does) and the EC **arms itself** —
+it sets its internal charge-mode bytes (EC `0x85` = 2, `0x87` = 2) and
+enforces the limit passively. Write anything else (e.g. `60 80`) and the EC
+stores the values but never arms, silently charging to 100%. That is the
+whole mystery behind "thresholds visible but not enforced".
 
-1. **Battery protection ON** — ACPI `\SBAD` = WMI cmd `0x1203`, arg byte 2 =
-   `1` (on) / `2` (off). This sets a flag in EC bank 5 (`0xFE0B0502`), outside
-   the classic EC address space (invisible to `ec_sys` dumps, which is why it
-   was missed). Read back with `\GBAD` = `0x1303` (returns 1=on, 2=off).
-2. **Charge mode 2** — ACPI `\SBCM` = WMI cmd `0x1503`, payload bytes 2–5 =
-   `mode, dact, start, end`. Mode `2` arms the charge-mode byte `CHMD`
-   (EC reg `0x85`) and rewrites the thresholds.
+Recognized pairs (PC Manager presets, from issue #17 and testing):
 
-Gotchas found by experiment:
+| start | stop | PC Manager name |
+|-------|------|-----------------|
+| 40 | 70 | "70%" |
+| 70 | 90 | "90%" |
+| 95 | 100 | "100%" |
+| 0 | 100 | no limit (disarm) |
 
-- mode `1` is rejected while on AC; mode `2` is the one that latches;
-- a non-zero `dact` byte clears `CHMD`;
-- with protection (`SBAD`) off, the EC accepts `SBCM` and then **silently
-  clears `CHMD` ~5 seconds later** — it looks armed, then reverts, which makes
-  this very easy to misdiagnose.
-
-Once armed, behaviour matches Windows: above the end threshold on AC the EC
-actively drains the battery down to the cap and holds it there; charging only
-resumes below the start threshold.
-
-## Quick test (stock kernel, no driver changes)
+So the fix is simply:
 
 ```sh
-# battery protection ON  (\SBAD, byte2=1)
-printf '0x011203' | sudo tee /sys/kernel/debug/huawei-wmi/arg
-sudo cat /sys/kernel/debug/huawei-wmi/call > /dev/null
-
-# charge mode 2, start=60 (0x3C), end=80 (0x50)  (\SBCM)
-printf '0x503C00021503' | sudo tee /sys/kernel/debug/huawei-wmi/arg
-sudo cat /sys/kernel/debug/huawei-wmi/call > /dev/null
+echo "70 90" | sudo tee /sys/devices/platform/huawei-wmi/charge_control_thresholds
 ```
 
-Verify: `sudo modprobe ec_sys`, then EC byte `0x85` must read `02` **and stay
-`02`** (re-check after 10 s):
+**No driver patch, no WMI arming needed.** Verify the EC armed itself
+(needs `modprobe ec_sys`): EC byte `0x85` must be non-zero —
 
 ```sh
-sudo xxd -s 0x84 -l 4 /sys/kernel/debug/ec/ec0/io
+sudo xxd -s 0x84 -l 4 /sys/kernel/debug/ec/ec0/io   # xx CHMD 48 xx, CHMD != 00
 ```
 
-## Proper fix: driver patch
+Enforcement is robust: confirmed to hold under full CPU+GPU load, and the
+EC actively drains back to the ceiling if the battery is above it when the
+limit is set.
 
-`huawei-wmi-battery-sbcm.patch` makes `huawei_wmi_battery_set()` issue
-`SBAD`(on) + `SBCM`(mode 2) after `SBTT` — or `SBAD`(off) + `SBCM`(mode 0)
-when set back to `0/100`. With it, the normal interfaces just work:
+## Notes from the deep-dive (for the curious)
 
-```sh
-echo "60 80" | sudo tee /sys/devices/platform/huawei-wmi/charge_control_thresholds
-# or /sys/class/power_supply/BAT0/charge_control_{start,end}_threshold,
-# or KDE's battery-limit UI
-```
-
-It composes with the Fn-key keymap patch in [`../fn-keys/`](../fn-keys/)
-(different hunks of the same file) — apply both to one DKMS tree.
+- `\SBCM` (WMI `0x1503`) sets mode + thresholds in one call. Payload bytes
+  2–5 are `mode, 0x48, start, stop` — byte 3 **must be the magic `0x48`**
+  (decoded in [Huawei-WMI#55](https://github.com/aymanbagabas/Huawei-WMI/issues/55));
+  modes: 1=home, 2=office, 3=travel, 4=smart-charge. With the key it can arm
+  *custom* pairs into an active drain-to-ceiling mode, but the EC cancels
+  that state under heavy load, so it would need periodic re-arming — the
+  preset-pair route is strictly better.
+- `\SBAD`/`\GBAD` (WMI `0x1203`/`0x1303`) is **battery calibration
+  discharge** (forces the machine to run from battery on AC until turned
+  off), *not* a protection switch. Don't leave it on.
+- EC bytes `0x85`/`0x86`/`0x87` are EC-owned status (charge mode / SBCM key
+  echo / arm state); host writes to them get reverted within seconds.
+- The EC RAM is memory-mapped at `0xFE0B0000` (banks `ECF0`–`ECF9` in the
+  DSDT), readable via `/dev/mem` — handy for diffing EC state.
 
 ## Persist across reboots
 
-The EC keeps the thresholds, but the protection/mode flags don't reliably
-survive a power cycle. `honor-battery-thresholds.sh` re-applies everything:
-it writes the thresholds via sysfs and, if a *stock* driver is loaded (LTS /
-rescue kernel, DKMS build failure), also replays the two WMI commands via
-debugfs as a fallback. Run it at boot with the service (defaults to 60–80;
-edit to taste):
+The EC keeps the pair across reboots, but re-applying at boot is free
+insurance. `honor-battery-thresholds.sh` writes the pair (default `70 90`,
+edit to taste — **use a recognized pair**):
 
 ```sh
 sudo install -Dm755 honor-battery-thresholds.sh /usr/local/sbin/honor-battery-thresholds.sh

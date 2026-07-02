@@ -1,13 +1,15 @@
 # huawei-wmi DKMS tree (vendored, patched for FMB-P)
 
 This is the stock kernel `drivers/platform/x86/huawei-wmi.c` (GPL-2.0) with
-both FMB-P patches from this repo already applied, plus `dkms.conf`/`Makefile`
-so it can be installed as a DKMS module that overrides the in-tree driver:
+the FMB-P Fn-key patch from this repo already applied, plus
+`dkms.conf`/`Makefile` so it can be installed as a DKMS module that overrides
+the in-tree driver:
 
 - [`../fn-keys/huawei-wmi-fmbp.patch`](../fn-keys/huawei-wmi-fmbp.patch) —
   FMB-P hotkey codes (issue #4)
-- [`../battery/huawei-wmi-battery-sbcm.patch`](../battery/huawei-wmi-battery-sbcm.patch) —
-  SBAD+SBCM arming so charge thresholds are actually enforced (issue #10/#17)
+
+(Battery thresholds need **no** driver change — the stock `\SBTT` path works
+once a recognized preset pair is used; see [`../battery/`](../battery/).)
 
 It is vendored so `install.sh` works offline and deterministically instead of
 fetching kernel sources at run time.

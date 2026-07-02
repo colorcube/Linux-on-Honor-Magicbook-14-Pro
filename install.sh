@@ -8,9 +8,9 @@
 #
 # Modules: dsdt driver fan battery touchscreen keyboard
 #   dsdt        patched DSDT override (the foundation — see fixes/dsdt/)
-#   driver      huawei-wmi DKMS with Fn-key + battery-enforcement patches
+#   driver      huawei-wmi DKMS with the Fn-key patch
 #   fan         honor-fmbp-hwmon DKMS (fan RPM in `sensors`)
-#   battery     charge thresholds 60-80 + EC arming service
+#   battery     charge threshold service (preset pair 70/90; see fixes/battery/)
 #   touchscreen power-on workaround service + sleep hook + inhibit rules
 #   keyboard    hwdb entry silencing the e078 atkbd spam
 # (fingerprint is manual-only: see fixes/fingerprint/)
@@ -210,7 +210,7 @@ dkms_module_install() { # $1 srcdir  $2 name  $3 version
 }
 
 driver_install() {
-    log "Installing patched huawei-wmi (Fn keys + battery enforcement)"
+    log "Installing patched huawei-wmi (Fn keys)"
     dkms_module_install "$FIX/huawei-wmi-dkms" huawei-wmi-fmbp 1.0
     modprobe -r huawei_wmi 2>/dev/null || true
     modprobe huawei-wmi || warn "module load failed — will load on next boot"
@@ -235,7 +235,7 @@ fan_uninstall() {
 # ---------------------------------------------------------------- the rest
 
 battery_install() {
-    log "Installing battery threshold service (60-80, edit the script to taste)"
+    log "Installing battery threshold service (70-90 preset, edit the script to taste)"
     install -Dm755 "$FIX/battery/honor-battery-thresholds.sh" /usr/local/sbin/honor-battery-thresholds.sh
     install -Dm644 "$FIX/battery/honor-battery-thresholds.service" /etc/systemd/system/honor-battery-thresholds.service
     systemctl daemon-reload

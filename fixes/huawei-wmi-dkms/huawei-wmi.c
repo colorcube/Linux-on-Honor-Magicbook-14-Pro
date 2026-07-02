@@ -35,10 +35,6 @@
 enum {
 	BATTERY_THRESH_GET		= 0x00001103, /* \GBTT */
 	BATTERY_THRESH_SET		= 0x00001003, /* \SBTT */
-	BATTERY_CHARGE_MODE_GET		= 0x00001603, /* \GBCM */
-	BATTERY_CHARGE_MODE_SET		= 0x00001503, /* \SBCM */
-	BATTERY_PROT_GET		= 0x00001303, /* \GBAD */
-	BATTERY_PROT_SET		= 0x00001203, /* \SBAD */
 	FN_LOCK_GET			= 0x00000604, /* \GFRS */
 	FN_LOCK_SET			= 0x00000704, /* \SFRS */
 	MICMUTE_LED_SET			= 0x00000b04, /* \SMLS */
@@ -395,30 +391,8 @@ static int huawei_wmi_battery_set(int start, int end)
 	}
 
 	err = huawei_wmi_cmd(arg.cmd, NULL, 0);
-	if (err)
-		return err;
 
-	/* FMB-P: SBTT stores the thresholds but the EC only enforces them
-	 * when battery protection (\SBAD, 1=on 2=off) is enabled AND charge
-	 * mode 2 (EC reg 0x85 CHMD) is armed via \SBCM. With protection off
-	 * the EC silently clears CHMD within seconds. This is the sequence
-	 * Honor PC Manager uses on Windows. Arm whenever a real limit is
-	 * set, disarm on 0/100.
-	 */
-	arg.cmd = BATTERY_PROT_SET;
-	arg.args[2] = (end > 0 && end < 100) ? 1 : 2;
-
-	err = huawei_wmi_cmd(arg.cmd, NULL, 0);
-	if (err)
-		return err;
-
-	arg.cmd = BATTERY_CHARGE_MODE_SET;
-	arg.args[2] = (end > 0 && end < 100) ? 2 : 0;
-	arg.args[3] = 0;
-	arg.args[4] = start;
-	arg.args[5] = end;
-
-	return huawei_wmi_cmd(arg.cmd, NULL, 0);
+	return err;
 }
 
 static ssize_t charge_control_start_threshold_show(struct device *dev,
