@@ -234,12 +234,29 @@ fan_uninstall() {
 
 # ---------------------------------------------------------------- the rest
 
+battery_armed() {
+    # The EC arms itself (EC reg 0x85 = preset index 1/2/3) only for the
+    # PC Manager preset pairs 40/70, 70/90, 95/100 — anything else is
+    # stored but silently ignored. Returns 0 if enforcement is armed.
+    modprobe ec_sys 2>/dev/null || return 2
+    [[ -r /sys/kernel/debug/ec/ec0/io ]] || return 2
+    local chmd
+    chmd=$(dd if=/sys/kernel/debug/ec/ec0/io bs=1 skip=$((0x85)) count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
+    [[ -n $chmd && $chmd -ne 0 ]]
+}
+
 battery_install() {
     log "Installing battery threshold service (70-90 preset, edit the script to taste)"
     install -Dm755 "$FIX/battery/honor-battery-thresholds.sh" /usr/local/sbin/honor-battery-thresholds.sh
     install -Dm644 "$FIX/battery/honor-battery-thresholds.service" /etc/systemd/system/honor-battery-thresholds.service
     systemctl daemon-reload
     systemctl enable --now honor-battery-thresholds.service
+    sleep 2
+    case $(battery_armed; echo $?) in
+    0) log "EC armed the limit (preset pair recognized) — enforcement active" ;;
+    1) warn "EC did NOT arm: the configured pair is not a PC Manager preset (only 40/70, 70/90, 95/100 are enforced)" ;;
+    *) : ;; # ec_sys unavailable — can't verify, stay quiet
+    esac
 }
 battery_uninstall() {
     systemctl disable --now honor-battery-thresholds.service 2>/dev/null || true
@@ -285,7 +302,15 @@ status() {
     printf "dsdt:        "; [[ -f /etc/acpi-override/acpi-override.cpio ]] && echo -e "$ok override built" || echo -e "$no"
     printf "driver:      "; grep -q huawei-wmi-fmbp <<<"$dkms_out" && echo -e "$ok $(grep huawei-wmi-fmbp <<<"$dkms_out" | head -1)" || echo -e "$no"
     printf "fan:         "; grep -q honor-fmbp-hwmon <<<"$dkms_out" && echo -e "$ok" || echo -e "$no"
-    printf "battery:     "; systemctl is-enabled honor-battery-thresholds.service >/dev/null 2>&1 && echo -e "$ok $(cat /sys/devices/platform/huawei-wmi/charge_control_thresholds 2>/dev/null)" || echo -e "$no"
+    printf "battery:     "
+    if systemctl is-enabled honor-battery-thresholds.service >/dev/null 2>&1; then
+        local armtxt=""
+        case $(battery_armed; echo $?) in
+        0) armtxt="(EC armed)" ;;
+        1) armtxt="(EC NOT armed — pair is not a preset!)" ;;
+        esac
+        echo -e "$ok $(cat /sys/devices/platform/huawei-wmi/charge_control_thresholds 2>/dev/null) $armtxt"
+    else echo -e "$no"; fi
     printf "touchscreen: "; systemctl is-enabled honor-touchscreen.service >/dev/null 2>&1 && echo -e "$ok" || echo -e "$no"
     printf "keyboard:    "; [[ -f /etc/udev/hwdb.d/61-honor-fmbp-keyboard.hwdb ]] && echo -e "$ok" || echo -e "$no"
     if [[ -r /sys/class/power_supply/BAT0/status ]]; then
