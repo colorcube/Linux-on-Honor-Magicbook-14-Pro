@@ -1,0 +1,3 @@
+SUBSYSTEM=="input", ATTRS{name}=="GXT7863:00 27C6:01E0 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"
+
+SUBSYSTEM=="input", ATTRS{name}=="FTSC1000:00 2808:5662 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"

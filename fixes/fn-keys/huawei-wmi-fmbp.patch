@@ -1,0 +1,38 @@
+--- /tmp/huawei-wmi-orig.c	2026-06-12 08:57:39.039747739 +0200
++++ /tmp/huawei-wmi-mod.c	2026-06-12 08:57:39.046642836 +0200
+@@ -78,6 +78,11 @@
+ 	{ KE_KEY,    0x285, { KEY_VOLUMEDOWN } },
+ 	{ KE_KEY,    0x286, { KEY_VOLUMEUP } },
+ 	{ KE_KEY,    0x287, { KEY_MICMUTE } },
++	// HONOR FMB-P touchpad toggle (F3)
++	{ KE_KEY,    0x283, { KEY_TOUCHPAD_ON } },
++	{ KE_KEY,    0x2a3, { KEY_TOUCHPAD_OFF } },
++	// HONOR FMB-P camera access toggle (F8)
++	{ KE_KEY,    0x288, { KEY_CAMERA_ACCESS_TOGGLE } },
+ 	{ KE_KEY,    0x289, { KEY_WLAN } },
+ 	// Huawei |M| key
+ 	{ KE_KEY,    0x28a, { KEY_CONFIG } },
+@@ -89,6 +94,23 @@
+ 	{ KE_IGNORE, 0x293, { KEY_KBDILLUMTOGGLE } },
+ 	{ KE_IGNORE, 0x294, { KEY_KBDILLUMUP } },
+ 	{ KE_IGNORE, 0x295, { KEY_KBDILLUMUP } },
++	// Keyboard backlight levels (space bar cycle on some models)
++	{ KE_KEY,    0x2b1, { KEY_KBDILLUMDOWN } },
++	{ KE_KEY,    0x2b2, { KEY_KBDILLUMDOWN } },
++	{ KE_KEY,    0x2b3, { KEY_KBDILLUMUP } },
++	{ KE_KEY,    0x2b4, { KEY_KBDILLUMTOGGLE } },
++	// Power/performance mode switch (Fn+P)
++	{ KE_KEY,    0x2a0, { KEY_PROG1 } },
++	{ KE_KEY,    0x2a1, { KEY_PROG1 } },
++	{ KE_KEY,    0x2a6, { KEY_PROG1 } },
++	// Refresh rate toggle (Fn+R)
++	{ KE_KEY,    0x2a7, { KEY_REFRESH_RATE_TOGGLE } },
++	// Camera module slot
++	{ KE_KEY,    0x2e0, { KEY_CAMERA_ACCESS_ENABLE } },
++	{ KE_KEY,    0x2e1, { KEY_CAMERA_ACCESS_DISABLE } },
++	// HONOR FMB-P EC notifications (kbd backlight auto on/off), ignore
++	{ KE_IGNORE, 0x2e5, { KEY_RESERVED } },
++	{ KE_IGNORE, 0x2e6, { KEY_RESERVED } },
+ 	// Ignore Ambient Light Sensoring
+ 	{ KE_KEY,    0x2c1, { KEY_RESERVED } },
+ 	{ KE_END,	 0 }

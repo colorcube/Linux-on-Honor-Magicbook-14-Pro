@@ -1,0 +1,11 @@
+[Unit]
+Description=Restore battery charge thresholds (Honor FMB-P)
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/honor-battery-thresholds.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
