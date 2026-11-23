@@ -6,3 +6,4 @@ msdm.*
 *.dat
 dsdt/out/
 dsdt/original/
+.copr/out/
