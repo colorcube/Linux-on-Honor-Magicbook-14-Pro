@@ -18,9 +18,9 @@ SPDX-FileCopyrightText = ["HONOR Device Co., Ltd. (original firmware DSDT)", "20
 SPDX-License-Identifier = "LicenseRef-OEM-firmware-derived"
 
 [[annotations]]
-path = "fixes/libfprint/**"
+path = ["fixes/libfprint/**", "fixes/legacy/libfprint-identity-fallback/**", "packaging/fedora/libfprint/**"]
 precedence = "override"
-SPDX-FileCopyrightText = ["2026 tsukasagenesis", "2026 Terrydaktal", "2026 nikube"]
+SPDX-FileCopyrightText = ["The libfprint contributors", "2026 codethinki", "2026 Zeno-sole (lichenggang)", "2026 nikube", "2026 tsukasagenesis", "2026 Terrydaktal"]
 SPDX-License-Identifier = "LGPL-2.1-or-later"
 
 [[annotations]]
