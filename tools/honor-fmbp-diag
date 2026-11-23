@@ -1,0 +1,151 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
+#
+# honor-fmbp-diag — read-only status report for the HONOR MagicBook Pro 14 (FMB-P).
+#
+# Prints machine/firmware/kernel facts and the state of every known fix as
+# Markdown, ready to paste into a GitHub issue. Changes nothing on the system.
+# Run as root (sudo) for the complete picture (DSDT SKU, kernel log, EC state);
+# without root the root-only checks are reported as "n/a (needs root)".
+#
+#   tools/honor-fmbp-diag            # print report
+#   sudo tools/honor-fmbp-diag > report.md
+#
+# Privacy: prints no serial numbers, UUIDs, MAC addresses or the MSDM
+# (Windows product key) table.
+
+export LC_ALL=C
+ROOT=0; [[ $EUID -eq 0 ]] && ROOT=1
+
+r()    { cat "$1" 2>/dev/null || echo "?"; }
+have() { command -v "$1" >/dev/null 2>&1; }
+row()  { printf '| %s | %s |\n' "$1" "$2"; }
+needroot() { echo "n/a (needs root)"; }
+klog() {  # kernel log of the current boot
+    if have journalctl; then journalctl -k -b --no-pager -q 2>/dev/null
+    else dmesg 2>/dev/null; fi
+}
+KLOG=$(klog)
+
+dsdt_sku() {
+    local t=/sys/firmware/acpi/tables/DSDT hex
+    [[ -r $t ]] || { needroot; return; }
+    hex=$(od -An -v -tx1 "$t" | tr -s ' \n' ' ')
+    if   grep -q '0c 18 90 e0 67' <<<"$hex"; then echo global
+    elif grep -q '0c 18 90 e1 67' <<<"$hex"; then echo chinese
+    else echo "unknown (new BIOS variant?)"; fi
+}
+
+dsdt_info() {
+    # DSDT header: OEM revision is a LE u32 at offset 24
+    local t=/sys/firmware/acpi/tables/DSDT rev
+    if [[ -r $t ]]; then
+        rev=$(od -An -tu4 -j24 -N4 "$t" | tr -d ' ')
+        printf 'OEM rev 0x%02X (%s)' "$rev" "$( ((rev > 2)) && echo "patched/override" || echo "stock firmware")"
+    else
+        grep -m1 -o 'ACPI: DSDT .*' <<<"$KLOG" || needroot
+    fi
+}
+
+secure_boot() {
+    if have mokutil; then mokutil --sb-state 2>/dev/null | head -1
+    else
+        local v; v=$(ls /sys/firmware/efi/efivars/SecureBoot-* 2>/dev/null | head -1)
+        [[ -n $v ]] && { [[ $(od -An -tu1 -j4 -N1 "$v" | tr -d ' ') = 1 ]] && echo enabled || echo disabled; } || echo "?"
+    fi
+}
+
+input_dev() { # name -> "present (inhibited=X)" / "absent"
+    local n d found=0
+    for d in /sys/class/input/input*; do
+        n=$(r "$d/name")
+        if [[ $n == "$1" ]]; then
+            found=1; echo "present, inhibited=$(r "$d/inhibited")"
+        fi
+    done
+    ((found)) || echo absent
+}
+
+mod() { lsmod 2>/dev/null | awk -v m="$1" '$1==m{print "loaded"; f=1} END{if(!f) print "not loaded"}'; }
+
+pkgver() {
+    if have rpm; then rpm -q "$1" 2>/dev/null | grep -v "not installed" | head -1
+    elif have dpkg-query; then dpkg-query -W -f '${Package} ${Version}\n' "$1" 2>/dev/null
+    elif have pacman; then pacman -Q "$1" 2>/dev/null
+    fi
+}
+
+echo "## honor-fmbp-diag report"
+echo
+echo "_Generated $(date -u +%Y-%m-%dT%H:%MZ), root=${ROOT}_"
+echo
+echo "### Machine"
+echo
+echo "| Item | Value |"
+echo "|---|---|"
+row Vendor/Product "$(r /sys/class/dmi/id/sys_vendor) / $(r /sys/class/dmi/id/product_name)"
+row "Version / SKU" "$(r /sys/class/dmi/id/product_version) / $(r /sys/class/dmi/id/product_sku)"
+row BIOS "$(r /sys/class/dmi/id/bios_version) ($(r /sys/class/dmi/id/bios_date))"
+row "BIOS SKU (from DSDT)" "$(dsdt_sku)"
+row CPU "$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+row Distro "$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-?}")"
+row Kernel "$(uname -r)"
+row Cmdline "\`$(sed -E 's/(root|rd\.luks\.uuid|resume|cryptdevice)=[^ ]*/\1=…/g' /proc/cmdline)\`"
+row "Secure Boot" "$(secure_boot)"
+row DSDT "$(dsdt_info)"
+row "DSDT table upgrade" "$(grep -m1 -o 'Table Upgrade: override.*' <<<"$KLOG" || echo 'none logged (GRUB acpi or no override)')"
+row "ACPI errors (boot)" "$(grep -c -E 'ACPI (BIOS )?Error|AE_NOT_FOUND|AE_ALREADY_EXISTS' <<<"$KLOG")"
+
+echo
+echo "### Devices"
+echo
+echo "| Item | State |"
+echo "|---|---|"
+row "Touchpad GXT7863" "$(input_dev 'GXT7863:00 27C6:01E0 Touchpad')"
+row "Touchpad ghost (UNKNOWN)" "$(input_dev 'GXT7863:00 27C6:01E0 UNKNOWN')"
+row "Touchscreen FTSC1000" "$(input_dev 'FTSC1000:00 2808:5662')"
+row "Touchscreen ghost (UNKNOWN)" "$(input_dev 'FTSC1000:00 2808:5662 UNKNOWN')"
+row "i2c_hid_acpi bound" "$(ls /sys/bus/i2c/drivers/i2c_hid_acpi/ 2>/dev/null | grep -E '^i2c-' | tr '\n' ' ')"
+fp=$(lsusb 2>/dev/null | grep -o -i -E 'ID (10a5|1c7a):[0-9a-f]{4}.*' | head -1)
+row "Fingerprint sensor" "${fp:-none found}"
+row "NVMe" "$(ls /sys/class/nvme 2>/dev/null | tr '\n' ' ')"
+row "Wi-Fi" "$(ls /sys/class/net 2>/dev/null | grep -E '^wl' | tr '\n' ' ' || true)"
+row "Unknown-key msgs (boot)" "$(grep -c 'Unknown key pressed' <<<"$KLOG")"
+row "Backlight" "$(ls /sys/class/backlight 2>/dev/null | tr '\n' ' ')"
+row "kbd backlight LED" "$(ls /sys/class/leds 2>/dev/null | grep -i kbd | tr '\n' ' ' || true)"
+row "Fan hwmon" "$(for h in /sys/class/hwmon/hwmon*; do [[ -e $h/fan1_input ]] && echo "$(r "$h/name"): $(r "$h/fan1_input")/$(r "$h/fan2_input") RPM"; done)"
+
+echo
+echo "### Battery"
+echo
+echo "| Item | Value |"
+echo "|---|---|"
+B=/sys/class/power_supply/BAT0
+row "Status / capacity" "$(r $B/status) / $(r $B/capacity)%"
+row "AC online" "$(r /sys/class/power_supply/ADP1/online)"
+row "Thresholds (BAT0 start/end)" "$(r $B/charge_control_start_threshold) / $(r $B/charge_control_end_threshold)"
+row "huawei-wmi thresholds" "$(r /sys/devices/platform/huawei-wmi/charge_control_thresholds)"
+
+echo
+echo "### Drivers & fixes"
+echo
+echo "| Item | State |"
+echo "|---|---|"
+for m in huawei_wmi honor_fmbp_hwmon honor_fmbp_kbdlight acpi_call hid_multitouch i2c_hid_acpi; do
+    row "module $m" "$(mod $m)"
+done
+if have dkms; then row "dkms" "$(dkms status 2>/dev/null | tr '\n' ';')"; fi
+for p in libfprint fprintd thermald power-profiles-daemon tuned-ppd; do
+    v=$(pkgver $p); [[ -n $v ]] && row "pkg $p" "$v"
+done
+for f in /etc/udev/rules.d/*honor* /etc/udev/rules.d/*touchpad* /etc/udev/rules.d/*gxt* \
+         /etc/udev/hwdb.d/*honor* /etc/udev/hwdb.d/*huawei* /etc/udev/hwdb.d/*gxt* \
+         /usr/lib/udev/rules.d/*honor* /usr/lib/udev/hwdb.d/*honor* \
+         /etc/dracut.conf.d/*honor* /etc/dracut.conf.d/*acpi* /boot/dsdt.aml /boot/*acpi*.img; do
+    [[ -e $f ]] && row "file" "\`$f\`"
+done
+for u in $(systemctl list-unit-files --no-legend 2>/dev/null | awk '/honor|touchscreen|battery-threshold/{print $1}'); do
+    row "unit $u" "$(systemctl is-enabled "$u" 2>/dev/null) / $(systemctl is-active "$u" 2>/dev/null)"
+done
+exit 0
