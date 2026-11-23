@@ -1,0 +1,78 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth) — https://github.com/drphilth/honor-magicbook-pro-14-ubuntu
+# SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
+#
+# honor-fmbp-dsdt-select — pick the prebuilt DSDT matching this machine's BIOS SKU
+# (global/Chinese) and place it where dracut's acpi_table_dir points
+# (/usr/lib/honor-fmbp/acpi/dsdt.aml). Used by the honor-fmbp-dsdt package.
+#
+#   honor-fmbp-dsdt-select            select + rebuild initramfs
+#   honor-fmbp-dsdt-select --no-initramfs
+#   honor-fmbp-dsdt-select --remove   remove the selection (+ rebuild)
+#
+# Detection: GNVS SystemMemory base 0x67E09018 (global) vs 0x67E19018 (Chinese), matched
+# as AML bytes in the live DSDT (same address in stock and corrected tables).
+# Override: put "global" or "chinese" into /etc/honor-fmbp/dsdt-force.
+set -e
+
+SHARE=/usr/share/honor-fmbp/dsdt
+ACPIDIR=/usr/lib/honor-fmbp/acpi
+FORCE=/etc/honor-fmbp/dsdt-force
+TABLE=/sys/firmware/acpi/tables/DSDT
+
+log() { echo "honor-fmbp-dsdt: $*" >&2; }
+
+rebuild() {
+    [ "$NOINIT" = 1 ] && return 0
+    command -v dracut >/dev/null 2>&1 || { log "dracut not found — rebuild your initramfs yourself"; return 0; }
+    log "rebuilding initramfs images (dracut --regenerate-all)"
+    dracut --force --regenerate-all >/dev/null 2>&1 || log "WARNING: dracut failed — run 'dracut --force --regenerate-all' manually"
+}
+
+detect_sku() {
+    [ -r "$TABLE" ] || return 1
+    hex=$(od -An -v -tx1 "$TABLE" | tr -s ' \n' ' ')
+    case "$hex" in
+        *"0c 18 90 e0 67"*) echo global ;;
+        *"0c 18 90 e1 67"*) echo chinese ;;
+        *) return 1 ;;
+    esac
+}
+
+NOINIT=0; MODE=select
+for a in "$@"; do
+    case "$a" in
+        --no-initramfs) NOINIT=1 ;;
+        --remove) MODE=remove ;;
+        *) log "unknown option $a"; exit 2 ;;
+    esac
+done
+
+if [ "$MODE" = remove ]; then
+    rm -f "$ACPIDIR/dsdt.aml"
+    rebuild
+    exit 0
+fi
+
+sku=""
+if [ -s "$FORCE" ]; then
+    sku=$(tr -d '[:space:]' < "$FORCE")
+    log "SKU forced to '$sku' via $FORCE"
+else
+    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+    product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
+    if [ "$vendor" != HONOR ] || [ "$product" != FMB-P ]; then
+        log "not an HONOR FMB-P (DMI: ${vendor:-?}/${product:-?}) — no DSDT override selected"
+        log "(write global|chinese to $FORCE to force one, e.g. for image builds)"
+        rm -f "$ACPIDIR/dsdt.aml"; exit 0
+    fi
+    sku=$(detect_sku) || { log "unknown BIOS SKU — no override selected. Please report with honor-fmbp-diag."; exit 0; }
+fi
+case "$sku" in global|chinese) ;; *) log "invalid SKU '$sku'"; exit 1 ;; esac
+
+mkdir -p "$ACPIDIR"
+# a real copy, not a symlink: dracut copies with -d (no-dereference)
+cp -f "$SHARE/dsdt.$sku.aml" "$ACPIDIR/dsdt.aml"
+log "selected the $sku DSDT"
+rebuild
