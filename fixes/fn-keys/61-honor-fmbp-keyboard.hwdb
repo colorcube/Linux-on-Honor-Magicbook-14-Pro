@@ -1,0 +1,4 @@
+# Honor MagicBook 14 Pro (FMB-P): the EC sends scancode e078 alongside Fn
+# hotkey presses; it carries no meaning — map to unknown to silence dmesg.
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHONOR*:pn*:*
+ KEYBOARD_KEY_e078=unknown
