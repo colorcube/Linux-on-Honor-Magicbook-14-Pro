@@ -41,16 +41,16 @@ Tested on BIOS 1.13 (global), Fedora 44, kernel 7.3. Details:
 Disable **Secure Boot** in the firmware (F2) first. Then:
 
 ```bash
-git clone https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro.git
-cd Linux-on-Honor-Magicbook-14-Pro
-sudo ./install.sh          # dsdt udev wmi hwmon kbdlight battery
+sudo dnf copr enable colorcube/honor-fmbp
+sudo dnf install honor-magicbook-pro-14
 sudo reboot
-./install.sh --status
+honor-fmbp-diag
 ```
 
-You'll find the fingerprint reader, a fresh install and more details in
-[docs/install/fedora.md](docs/install/fedora.md). Fedora packages (COPR) are in
-preparation.
+The packages come from the [COPR](https://copr.fedorainfracloud.org/coprs/colorcube/honor-fmbp/)
+(Fedora 44) and include the patched libfprint for the fingerprint reader. Details,
+alternatives (`install.sh`) and uninstall instructions are in
+[docs/install/fedora.md](docs/install/fedora.md).
 
 **Other distributions:**
 - **Ubuntu:** use drphilth's PPA ([honor-magicbook-pro-14-ubuntu](https://github.com/drphilth/honor-magicbook-pro-14-ubuntu)).

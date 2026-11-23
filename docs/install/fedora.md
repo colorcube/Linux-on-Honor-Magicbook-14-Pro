@@ -13,7 +13,47 @@ Verified on Fedora 44 (KDE), kernel 7.3, BIOS 1.13 global.
 - Remove old workarounds from the kernel command line if present: `i8042.dumbkbd=1`,
   `snd-intel-dspcfg.dsp_driver=3`, `snd-hda-intel.model=generic`.
 
-## 2. Install the fixes
+## 2. Install (COPR packages, recommended)
+
+```bash
+sudo dnf copr enable colorcube/honor-fmbp
+sudo dnf install honor-magicbook-pro-14
+sudo reboot
+honor-fmbp-diag
+```
+
+The metapackage `honor-magicbook-pro-14` pulls in:
+
+| Package | Content |
+|---|---|
+| `honor-fmbp-dsdt` | corrected DSDT (global/Chinese chosen automatically), dracut override |
+| `honor-fmbp-udev` | hwdb/udev quirks (touchpad ghost keys, scancodes, touchscreen ghost) |
+| `honor-fmbp-battery` | charge-limit service (`/etc/default/honor-fmbp-battery`, default `70 90`) |
+| `honor-fmbp-tools` | `honor-fmbp-diag`, `honor-fmbp-touchscreen-toggle`, `honor-fmbp-battery-probe` |
+| `honor-fmbp-hwmon-dkms`, `honor-fmbp-kbdlight-dkms`, `huawei-wmi-fmbp-dkms` | drivers (DKMS, rebuilt on kernel updates) |
+| `libfprint` (recommended) | Fedora's libfprint plus MR !666 for the FPC `10a5:9924` sensor |
+
+After the reboot, `journalctl -k -b | grep "Table Upgrade"` should show
+`override [DSDT-HONOR-ARL]`.
+
+The COPR has repo priority 90, so its `libfprint` wins over Fedora's. If Fedora updates
+libfprint, the COPR build is rebuilt. Until then you stay on the patched version. If
+you'd rather keep Fedora's libfprint (for example because you have a different sensor),
+exclude it from the COPR:
+
+```bash
+sudo dnf config-manager setopt copr:copr.fedorainfracloud.org:colorcube:honor-fmbp.excludepkgs=libfprint
+sudo dnf distro-sync libfprint
+```
+
+**Rescue:** if the system doesn't boot, choose Fedora's `0-rescue` entry and run
+`sudo dnf remove honor-fmbp-dsdt`.
+
+**Uninstall:** `sudo dnf remove 'honor-fmbp-*' huawei-wmi-fmbp-dkms honor-magicbook-pro-14 && sudo dnf distro-sync libfprint`.
+
+## 3. Alternative: `install.sh` (without packages)
+
+Use this if you don't want the COPR. Don't combine it with the packages.
 
 ```bash
 git clone https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro.git
@@ -23,49 +63,15 @@ sudo reboot
 ./install.sh --status
 ```
 
-What `install.sh` does on Fedora:
-
-- **dsdt:**
-  - If the firmware table is unmodified, it builds the corrected DSDT from it.
-  - If an override is already active, it uses `dsdt/prebuilt/dsdt.<sku>.aml`.
-  - It installs the table to `/usr/lib/honor-fmbp/acpi/` and adds
-    `/etc/dracut.conf.d/10-honor-fmbp-dsdt.conf`, then rebuilds all initramfs images.
-  - It disables an old GRUB `acpi /dsdt.aml` line and old touchscreen/acpi_call
-    services, with backups in `/var/lib/honor-fmbp/backup/`.
-- **udev, wmi, hwmon, kbdlight, battery:** see [fixes/](../../fixes/).
-
-After the reboot, `journalctl -k -b | grep "Table Upgrade"` should show
-`override [DSDT-HONOR-ARL]`. The touchscreen, the keyboard backlight (KDE: battery &
-brightness applet) and `sensors` should then work.
-
-**Rescue:** if the system doesn't boot, choose Fedora's `0-rescue` entry. Its
-initramfs predates the override. Then run `sudo ./install.sh --uninstall --only dsdt`.
-
-## 3. Fingerprint (FPC `10a5:9924`)
-
-Until the COPR is available, build the patched libfprint yourself:
-
-```bash
-sudo dnf install rpm-build rpmdevtools 'dnf-command(builddep)'
-sudo dnf builddep packaging/fedora/libfprint/libfprint.spec
-mkdir -p ~/rpmbuild/SOURCES && cp packaging/fedora/libfprint/*.patch ~/rpmbuild/SOURCES/
-spectool -g -R packaging/fedora/libfprint/libfprint.spec
-rpmbuild -bb packaging/fedora/libfprint/libfprint.spec
-sudo dnf install ~/rpmbuild/RPMS/x86_64/libfprint-1.94.100-1.1.honor.fc44.x86_64.rpm
-sudo systemctl restart fprintd
-```
-
-Then enroll in *System Settings → Users → Fingerprint* (KDE) or with `fprintd-enroll`.
-To go back to Fedora's package, run `sudo dnf distro-sync libfprint`.
+- If the firmware table is unmodified, `install.sh` builds the DSDT from it.
+- It disables old GRUB `acpi` lines and acpi_call services, with backups in
+  `/var/lib/honor-fmbp/backup/`.
+- It does not cover the fingerprint reader. For that, build
+  `packaging/fedora/libfprint/libfprint.spec` with `rpmbuild` (see
+  [fixes/libfprint/](../../fixes/libfprint/)).
 
 ## 4. Charge limit
 
 Edit `BATTERY_THRESHOLD` in `/etc/default/honor-fmbp-battery`. Only `40 70`, `70 90`
 and `95 100` work. Then run `sudo systemctl restart honor-fmbp-battery`. In KDE's
 energy settings, pick the same values.
-
-## Uninstall
-
-```bash
-sudo ./install.sh --uninstall && sudo reboot
-```
