@@ -50,7 +50,7 @@ redistributed to owners of this hardware as an interoperability fix.
 
 | File | SKU | Tested on hardware |
 |---|---|---|
-| `dsdt.global.aml` | global | functionally identical to drphilth's hardware-tested table; testing on BIOS 1.13 in progress |
+| `dsdt.global.aml` | global | ✅ BIOS 1.13, Fedora 44, kernel 7.3.4 (see [docs/testing.md](../docs/testing.md)) |
 | `dsdt.chinese.aml` | Chinese | **untested**, reports welcome |
 
 ## Installing the override
