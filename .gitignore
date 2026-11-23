@@ -1,0 +1,8 @@
+# Raw ACPI dumps contain the MSDM table (Windows product key) — never commit them.
+MSDM
+MSDM.*
+msdm
+msdm.*
+*.dat
+dsdt/out/
+dsdt/original/
