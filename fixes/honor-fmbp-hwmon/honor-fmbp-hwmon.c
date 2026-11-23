@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0-only
 // SPDX-FileCopyrightText: 2026 tsukasagenesis — https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/pull/21
 /*
  * hwmon driver for Honor MagicBook 14 Pro (FMB-P) EC fan tachometers.
