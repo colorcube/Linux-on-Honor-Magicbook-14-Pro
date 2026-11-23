@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth) — https://github.com/drphilth/honor-magicbook-pro-14-ubuntu
+# HONOR MagicBook Pro 14 2025 (FMB-P): inhibit the FocalTech FTSC1000 touchscreen's
+# bogus SECOND HID collection ("FTSC1000:00 2808:5662 UNKNOWN"), which spams
+# KEY_MICMUTE (~30/s) while the panel is touched — toggling the microphone and
+# confusing Fn+F7. Inhibiting it leaves only the real multitouch device in use.
+# (Touchscreen *power* comes from the DSDT PowerResource fix, not this rule.)
+# Source: colorcube/Linux-on-Honor-Magicbook-14-Pro #20 / stretch/touchscreen.md
+SUBSYSTEM=="input", ATTRS{name}=="FTSC1000:00 2808:5662 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"

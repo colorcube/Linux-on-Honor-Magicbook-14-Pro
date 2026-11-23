@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 tsukasagenesis, drphilth (Philip Walsh)
 # Honor MagicBook 14 Pro (FMB-P): the EC sends scancode e078 alongside Fn
 # hotkey presses; it carries no meaning — map to unknown to silence dmesg.
 evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHONOR*:pn*:*
