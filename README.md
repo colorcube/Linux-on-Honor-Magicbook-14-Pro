@@ -54,7 +54,7 @@ alternatives (`install.sh`) and uninstall instructions are in
 
 **Other distributions:**
 - **Ubuntu:** use drphilth's PPA ([honor-magicbook-pro-14-ubuntu](https://github.com/drphilth/honor-magicbook-pro-14-ubuntu)).
-- **Fedora-based with Secure Boot:** [Evernight Vista](https://copr.fedorainfracloud.org/coprs/march7thdev/Evernight-Vista-Kernel)
+- **Fedora-based with Secure Boot:** [Evernight Vista](https://copr.fedorainfracloud.org/coprs/evernightvista/evernight-vista)
   ships a kernel with the DSDT built in.
 - **Others:** `install.sh` also supports pacman/mkinitcpio and apt/initramfs-tools on a
   best-effort basis.
