@@ -33,6 +33,9 @@ dsdt/build.sh --table /path/to/DSDT.dat      # raw table from `acpidump -b`
 dsdt/build.sh --dsl   /path/to/stock.dsl     # e.g. denis-bb's original/dsdt.global.dsl
 ```
 
+On BIOS 1.13 global, the table built from the firmware is identical to drphilth's
+hardware-tested table (verified 2026-11-23, see [docs/testing.md](../docs/testing.md)).
+
 The script detects the BIOS SKU (global/Chinese) from the GNVS address. It aborts if a
 future BIOS changes the patched code. When the input is global, it also derives the
 Chinese table. That table is byte-identical to one built straight from denis-bb's
