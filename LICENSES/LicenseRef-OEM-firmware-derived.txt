@@ -1,0 +1,7 @@
+Derived, for interoperability, from the ACPI firmware shipped with the HONOR
+MagicBook Pro 14 2025 (FMB-P), with only the minimal changes required to run
+Linux on it (see dsdt/prebuilt/fix.global.patch). The original table is
+copyright HONOR Device Co., Ltd. These files are redistributed to owners of the
+covered hardware as an interoperability fix, in line with the long-standing
+community practice of publishing corrected laptop DSDTs. Prefer building the
+table from your own firmware with dsdt/build.sh.

@@ -1,0 +1,8 @@
+#!/bin/bash
+# Re-power the FMB-P touchscreen after suspend (panel power is lost in sleep).
+case "$1" in
+    post)
+        /usr/local/sbin/honor-touchscreen-on.sh
+        ;;
+esac
+exit 0

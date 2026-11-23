@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: CC-BY-4.0
+name: Test report / problem
+description: Report what works or doesn't on your FMB-P
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks! Please run `sudo tools/honor-fmbp-diag` from this repository and paste the output below.
+  - type: dropdown
+    id: sku
+    attributes:
+      label: BIOS variant
+      options: [global, Chinese, don't know]
+    validations: {required: true}
+  - type: input
+    id: bios
+    attributes:
+      label: BIOS version
+      placeholder: "1.13"
+    validations: {required: true}
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and kernel
+      placeholder: "Fedora 44, 7.3.4"
+    validations: {required: true}
+  - type: textarea
+    id: what
+    attributes:
+      label: What did you test, what worked, what didn't?
+    validations: {required: true}
+  - type: textarea
+    id: diag
+    attributes:
+      label: Output of `sudo tools/honor-fmbp-diag`
+      render: markdown

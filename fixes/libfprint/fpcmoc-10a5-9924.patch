@@ -1,0 +1,44 @@
+diff --git a/data/autosuspend.hwdb b/data/autosuspend.hwdb
+index 104ce5e6df7593136ecb6365fa8bebc46c8a7579..c638efb65cdb07ade689908e0d45e1f2b3048eed 100644
+--- a/data/autosuspend.hwdb
++++ b/data/autosuspend.hwdb
+@@ -212,6 +212,7 @@ usb:v10A5pD205*
+ usb:v10A5p9524*
+ usb:v10A5p9544*
+ usb:v10A5pC844*
++usb:v10A5p9924*
+ usb:v10A5p9B24*
+  ID_AUTOSUSPEND=1
+  ID_PERSIST=0
+diff --git a/libfprint/drivers/fpcmoc/fpc.c b/libfprint/drivers/fpcmoc/fpc.c
+index 2a0d9ab889e3d2b5a6175cd1f4316ede932994cb..41e9f7bff14e84d20221da6a4142ece334c614eb 100644
+--- a/libfprint/drivers/fpcmoc/fpc.c
++++ b/libfprint/drivers/fpcmoc/fpc.c
+@@ -74,6 +74,7 @@ static const FpIdEntry id_table[] = {
+   { .vid = 0x10A5,  .pid = 0x9524,  },
+   { .vid = 0x10A5,  .pid = 0x9544,  },
+   { .vid = 0x10A5,  .pid = 0xC844,  },
++  { .vid = 0x10A5,  .pid = 0x9924,  },
+   { .vid = 0x10A5,  .pid = 0x9B24,  },
+   /* terminating entry */
+   { .vid = 0,  .pid = 0,  .driver_data = 0 },
+@@ -1836,6 +1837,7 @@ fpc_dev_probe (FpDevice *device)
+     case 0x9524:
+     case 0x9544:
+     case 0xC844:
++    case 0x9924:
+       self->max_enroll_stage = MAX_ENROLL_SAMPLES;
+       break;
+ 
+@@ -1858,7 +1860,10 @@ fpc_dev_open (FpDevice *device)
+   GError *error = NULL;
+ 
+   fp_dbg ("%s enter -->", G_STRFUNC);
+-  if (!g_usb_device_reset (fpi_device_get_usb_device (device), &error))
++  /* A USB reset makes the 10a5:9924 firmware restart and re-enumerate as a
++   * new device, which invalidates this handle, so skip it there. */
++  if (g_usb_device_get_pid (fpi_device_get_usb_device (device)) != 0x9924 &&
++      !g_usb_device_reset (fpi_device_get_usb_device (device), &error))
+     {
+       fpi_device_open_complete (FP_DEVICE (self), error);
+       return;

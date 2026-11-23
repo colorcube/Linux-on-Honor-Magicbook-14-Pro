@@ -1,0 +1,32 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth)
+# Install as /etc/initramfs-tools/hooks/honor-fmbp-dsdt (Debian/Ubuntu).
+# honor-fmbp-dsdt initramfs hook: prepend the SELECTED corrected HONOR FMB-P DSDT as an
+# uncompressed early cpio (kernel/firmware/acpi/dsdt.aml) so acpi_table_upgrade() replaces
+# the firmware table before the kernel ever parses it. Boot-critical on the FMB-P: the
+# stock DSDT's NFC0 load abort hides the NVMe and touchpad.
+#
+# This hook is deliberately dumb: it copies whatever /usr/lib/honor-fmbp/acpi/dsdt.aml
+# at. The global/Chinese SKU choice is resolved once, at install time, by
+# honor-fmbp-dsdt-select (invoked from the postinst) — never here, so kernel updates don't
+# re-detect a hardware constant. If no variant was selected (not an FMB-P, or an
+# unrecognised BIOS) the symlink is absent and this hook emits nothing.
+PREREQ=""
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+    prereqs) prereqs; exit 0 ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+AML=/usr/lib/honor-fmbp/acpi/dsdt.aml
+[ -r "$AML" ] || exit 0
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/ov/kernel/firmware/acpi"
+cp "$AML" "$tmp/ov/kernel/firmware/acpi/dsdt.aml"
+( cd "$tmp/ov" && find kernel | LC_ALL=C sort | cpio -o -H newc -R 0:0 --quiet ) > "$tmp/early.cpio"
+prepend_earlyinitramfs "$tmp/early.cpio"
+exit 0

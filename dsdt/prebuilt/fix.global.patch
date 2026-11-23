@@ -1,0 +1,228 @@
+--- stock/dsdt.dsl (BIOS 1.13 global)
++++ patched/dsdt.dsl
+@@ -18,7 +18,7 @@
+  *     Compiler ID      "ACPI"
+  *     Compiler Version 0x00040000 (262144)
+  */
+-DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x00000002)
++DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x00000003)
+ {
+     /*
+      * iASL Warning: There were 52 external control methods found during
+@@ -93,7 +93,6 @@
+     External (_SB_.PC00.CNVW.CRFI, UnknownObj)
+     External (_SB_.PC00.CNVW.DPRS, UnknownObj)
+     External (_SB_.PC00.CNVW.DRIE, UnknownObj)
+-    External (_SB_.PC00.CNVW.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.CNVW.FLRC, UnknownObj)
+     External (_SB_.PC00.CNVW.PRRS, UnknownObj)
+     External (_SB_.PC00.CNVW.RSTT, UnknownObj)
+@@ -202,7 +201,6 @@
+     External (_SB_.PC00.RP01.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP01.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP01.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP01.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP01.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP01.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP01.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -243,7 +241,6 @@
+     External (_SB_.PC00.RP02.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP02.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP02.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP02.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP02.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP02.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP02.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -284,7 +281,6 @@
+     External (_SB_.PC00.RP03.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP03.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP03.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP03.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP03.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP03.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP03.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -325,7 +321,6 @@
+     External (_SB_.PC00.RP04.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP04.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP04.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP04.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP04.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP04.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP04.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -367,7 +362,6 @@
+     External (_SB_.PC00.RP05.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP05.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP05.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP05.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP05.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP05.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP05.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -408,7 +402,6 @@
+     External (_SB_.PC00.RP06.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP06.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP06.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP06.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP06.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP06.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP06.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -449,7 +442,6 @@
+     External (_SB_.PC00.RP07.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP07.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP07.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP07.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP07.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP07.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP07.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -496,7 +488,6 @@
+     External (_SB_.PC00.RP08.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP08.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP08.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP08.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP08.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP08.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP08.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -538,7 +529,6 @@
+     External (_SB_.PC00.RP09.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP09.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP09.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP09.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP09.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP09.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP09.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -581,7 +571,6 @@
+     External (_SB_.PC00.RP10.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP10.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP10.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP10.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP10.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP10.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP10.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -624,7 +613,6 @@
+     External (_SB_.PC00.RP11.PXSX.CRFI, UnknownObj)
+     External (_SB_.PC00.RP11.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP11.PXSX.DRIE, UnknownObj)
+-    External (_SB_.PC00.RP11.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP11.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP11.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP11.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -707,7 +695,6 @@
+     External (_SB_.PC00.RP12.PXSX.DPRS, UnknownObj)
+     External (_SB_.PC00.RP12.PXSX.DRIE, UnknownObj)
+     External (_SB_.PC00.RP12.PXSX.EDMX, UnknownObj)
+-    External (_SB_.PC00.RP12.PXSX.EFUN.CRFI, UnknownObj)
+     External (_SB_.PC00.RP12.PXSX.FDEL, IntObj)
+     External (_SB_.PC00.RP12.PXSX.FLRC, UnknownObj)
+     External (_SB_.PC00.RP12.PXSX.ISGX, MethodObj)    // 0 Arguments
+@@ -1004,8 +991,6 @@
+     External (_SB_.PC00.VMD0.VLOF, MethodObj)    // 2 Arguments
+     External (_SB_.PC00.VMD0.VLON, MethodObj)    // 2 Arguments
+     External (_SB_.PC00.VMD0.VMS0, UnknownObj)
+-    External (_SB_.PC00.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
+-    External (_SB_.PC00.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
+     External (_SB_.PC00.XHCI.DUAM, MethodObj)    // 0 Arguments
+     External (_SB_.PC00.XHCI.RHUB.HS03.VTCM, IntObj)
+     External (_SB_.PC00.XHCI.RHUB.HS05.VTCM, IntObj)
+@@ -1332,8 +1317,6 @@
+     External (_SB_.PC02.THC1.CINI, MethodObj)    // 2 Arguments
+     External (_SB_.PC02.VMDE, UnknownObj)
+     External (_SB_.PC02.VMPP, UnknownObj)
+-    External (_SB_.PC02.XHCI._PS0.PS0X, MethodObj)    // 0 Arguments
+-    External (_SB_.PC02.XHCI._PS3.PS3X, MethodObj)    // 0 Arguments
+     External (_SB_.PC02.XHCI.RHUB.HS03.VTCM, IntObj)
+     External (_SB_.PC02.XHCI.RHUB.HS05.VTCM, IntObj)
+     External (_SB_.PC02.XHCI.RHUB.INIR, MethodObj)    // 0 Arguments
+@@ -12268,10 +12251,6 @@
+                         Return (Zero)
+                     }
+ 
+-                    If (CondRefOf (PS0X))
+-                    {
+-                        PS0X ()
+-                    }
+                 }
+ 
+                 Method (_PS3, 0, Serialized)  // _PS3: Power State 3
+@@ -12283,10 +12262,6 @@
+                         Return (Zero)
+                     }
+ 
+-                    If (CondRefOf (PS3X))
+-                    {
+-                        PS3X ()
+-                    }
+                 }
+ 
+                 Method (CUID, 1, Serialized)
+@@ -18157,10 +18132,6 @@
+                         Return (Zero)
+                     }
+ 
+-                    If (CondRefOf (PS0X))
+-                    {
+-                        PS0X ()
+-                    }
+                 }
+ 
+                 Method (_PS3, 0, Serialized)  // _PS3: Power State 3
+@@ -18172,10 +18143,6 @@
+                         Return (Zero)
+                     }
+ 
+-                    If (CondRefOf (PS3X))
+-                    {
+-                        PS3X ()
+-                    }
+                 }
+ 
+                 Method (CUID, 1, Serialized)
+@@ -86147,8 +86114,6 @@
+                             0x0000
+                         }
+                 })
+-                CreateWordField (SBGF, 0x17, INT1)
+-                INT1 = GNUM (0x0014080A)
+                 Method (_STA, 0, NotSerialized)  // _STA: Status
+                 {
+                     If (((TPDT == One) || (TPDT == 0x02)))
+@@ -86271,6 +86236,41 @@
+                     }
+                 }
+ 
++                PowerResource (PWRR, 0x00, 0x0000)
++                {
++                    Name (STAT, Zero)
++                    Method (_STA, 0, NotSerialized) { Return (STAT) }
++                    Method (_ON, 0, NotSerialized)
++                    {
++                        \_SB.SPMV (0x0014040C, Zero)
++                        \_SB.SGOV (0x0014040C, One)
++                        Sleep (0x02)
++                        \_SB.SPMV (0x00140482, Zero)
++                        \_SB.SGOV (0x00140482, One)
++                        Sleep (0x64)
++                        STAT = One
++                    }
++                    Method (_OFF, 0, NotSerialized)
++                    {
++                        \_SB.SGOV (0x00140482, Zero)
++                        Sleep (0x03)
++                        \_SB.SGOV (0x0014040C, Zero)
++                        STAT = Zero
++                    }
++                }
++                Name (TD_P, Package (0x01) { \_SB.PC00.I2C2.TPL1.PWRR })
++                Method (_PR0, 0, NotSerialized)
++                {
++                    If ((_STA () == 0x0F)) { Return (TD_P) }
++                    Return (Package (0x00) {})
++                }
++                Method (_PR3, 0, NotSerialized)
++                {
++                    If ((_STA () == 0x0F)) { Return (TD_P) }
++                    Return (Package (0x00) {})
++                }
++                Method (_PS0, 0, NotSerialized) { }
++                Method (_PS3, 0, NotSerialized) { }
+                 Name (_HID, "XXXX0000")  // _HID: Hardware ID
+                 Name (_CID, "PNP0C50" /* HID Protocol Device (I2C bus) */)  // _CID: Compatible ID
+                 Method (_UID, 0, NotSerialized)  // _UID: Unique ID

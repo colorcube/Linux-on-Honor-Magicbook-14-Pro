@@ -1,0 +1,11 @@
+[Unit]
+Description=Power on Honor MagicBook FMB-P touchscreen (BIOS PTPL bug workaround)
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/honor-touchscreen-on.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

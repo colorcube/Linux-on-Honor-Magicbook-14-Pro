@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth) — https://github.com/drphilth/honor-magicbook-pro-14-ubuntu
+# honor-fmbp-touchscreen-toggle — toggle the FTSC1000 touchscreen on the HONOR
+# MagicBook Pro 14 2025 (FMB-P).
+#
+# Default (rootless): flip the real multitouch node's `inhibited` sysfs attr — events
+#   stop instantly, panel stays powered. Write access comes from the packaged udev
+#   rule (group `input`); anyone else is transparently re-run through pkexec, which
+#   pops a GUI auth prompt (sudo fallback on a bare tty).
+# --power: TRUE power toggle — unbind/bind i2c_hid_acpi so ACPI runs PWRR._OFF/_ON
+#   (needs the honor-fmbp DSDT) and the panel is physically unpowered while off.
+#   ~2s to come back; the bogus-HID udev inhibit re-applies automatically on rebind.
+#
+# Suggested binding: a GNOME custom shortcut (e.g. Super+T).
+set -euo pipefail
+
+NAME="FTSC1000:00 2808:5662"   # exact — excludes the force-inhibited "... UNKNOWN" sibling
+I2C_DEV="i2c-FTSC1000:00"
+DRV="/sys/bus/i2c/drivers/i2c_hid_acpi"
+
+notify() {  # best-effort desktop notification (no-op in the pkexec-root context)
+    command -v notify-send >/dev/null && \
+        notify-send -t 2000 -i input-touchpad-symbolic "Touchscreen" "$1" || true
+}
+
+reexec_privileged() {
+    if command -v pkexec >/dev/null && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        exec pkexec "$(readlink -f "$0")" "$@"
+    fi
+    exec sudo "$(readlink -f "$0")" "$@"
+}
+
+if [[ "${1:-}" == "--power" ]]; then
+    [[ $EUID -eq 0 ]] || reexec_privileged --power
+    if [[ -e "$DRV/$I2C_DEV" ]]; then
+        echo "$I2C_DEV" > "$DRV/unbind"
+        notify "powered OFF (panel unpowered)"
+    else
+        echo "$I2C_DEV" > "$DRV/bind"
+        notify "powered ON"
+    fi
+    exit 0
+fi
+
+for f in /sys/class/input/input*/name; do
+    [[ "$(cat "$f")" == "$NAME" ]] || continue
+    inh="${f%name}inhibited"
+    if [[ "$(cat "$inh")" == "0" ]]; then new=1; else new=0; fi
+    if ! echo "$new" > "$inh" 2>/dev/null; then
+        [[ $EUID -eq 0 ]] && { echo "cannot write $inh" >&2; exit 1; }
+        reexec_privileged "$@"
+    fi
+    [[ "$new" == 1 ]] && notify "disabled" || notify "enabled"
+    exit 0
+done
+notify "not found (panel powered off? try --power)"
+echo "touchscreen input node '$NAME' not found" >&2
+exit 1

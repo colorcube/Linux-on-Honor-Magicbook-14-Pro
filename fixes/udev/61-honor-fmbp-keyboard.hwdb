@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 tsukasagenesis, drphilth (Philip Walsh)
+# Honor MagicBook 14 Pro (FMB-P): alongside Fn hotkey presses (whose real function
+# arrives via huawei-wmi) the EC also sends meaningless PS/2 scancodes:
+#   e078 - found by tsukasagenesis / drphilth
+#   f8   - sent with Fn+F1/F2/F3/F5/F7/F8/F10/F11 (BIOS 1.13, found by colorcube)
+# Map them to "unknown" so atkbd stops logging "Unknown key pressed".
+evdev:atkbd:dmi:bvn*:bvr*:bd*:svnHONOR:pnFMB-P:*
+ KEYBOARD_KEY_e078=unknown
+ KEYBOARD_KEY_f8=unknown

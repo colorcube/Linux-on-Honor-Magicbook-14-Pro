@@ -1,0 +1,30 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
+# Test 4b: read the EC's charge mode via the read-only WMI queries \GBTT (0x1103,
+# thresholds) and \GBCM (0x1603, charge mode = EC 0x85) after each threshold pair.
+# Preset pairs should arm mode 1/2/3, non-preset pairs should leave mode 0 (issue #10).
+# Only the normal sysfs threshold file is written; the WMI calls are read-only (GET).
+# ~10 min, restores "0 100".
+set -u
+[ "$EUID" = 0 ] || { echo "run with sudo"; exit 1; }
+T=/sys/devices/platform/huawei-wmi/charge_control_thresholds
+B=/sys/class/power_supply/BAT0
+D=/sys/kernel/debug/huawei-wmi
+OUT=${OUT:-./honor-fmbp-battery-probe-$(date +%H%M).log}
+mountpoint -q /sys/kernel/debug || mount -t debugfs none /sys/kernel/debug
+[ -w $D/arg ] || { echo "no $D (huawei-wmi debugfs missing)"; exit 1; }
+wmi_get() { printf '%s' "$1" > $D/arg; cat $D/call 2>&1 | tr -s ' \n' ' ' | cut -c1-120; }
+
+trap 'echo "0 100" > $T; echo "restored 0 100" | tee -a "$OUT"' EXIT
+echo "start: capacity=$(cat $B/capacity)% status=$(cat $B/status)" | tee "$OUT"
+echo "   GBTT: $(wmi_get 0x1103)" | tee -a "$OUT"
+echo "   GBCM: $(wmi_get 0x1603)" | tee -a "$OUT"
+for pair in "60 80" "70 90" "50 80" "40 70" "0 100"; do
+    echo "$pair" > $T
+    echo "== set '$pair'" | tee -a "$OUT"
+    for i in 1 2 3 4; do
+        sleep 30
+        echo "   +$((i*30))s status=$(cat $B/status) current=$(cat $B/current_now) | GBTT: $(wmi_get 0x1103) | GBCM: $(wmi_get 0x1603)" | tee -a "$OUT"
+    done
+done

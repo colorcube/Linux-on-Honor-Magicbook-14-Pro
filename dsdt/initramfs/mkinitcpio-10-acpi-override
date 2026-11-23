@@ -1,0 +1,15 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 tsukasagenesis
+# HONOR MagicBook Pro 14 (FMB-P): prepend the corrected DSDT as an uncompressed
+# ACPI-override cpio to every generated initramfs. Install as
+# /etc/initcpio/post/10-acpi-override. The -lts image is left stock as a rescue entry.
+# Args from mkinitcpio: $1 = kernel image, $2... = generated initramfs images.
+cpio=/usr/lib/honor-fmbp/acpi-override.cpio
+[[ -f $cpio ]] || exit 0
+for img in "${@:2}"; do
+    [[ -f $img ]] || continue
+    [[ $img == *-lts* ]] && continue
+    cat "$cpio" "$img" > "$img.acpitmp" && mv "$img.acpitmp" "$img"
+done
+exit 0

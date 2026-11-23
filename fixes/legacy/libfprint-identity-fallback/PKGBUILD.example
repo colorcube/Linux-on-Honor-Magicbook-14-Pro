@@ -1,0 +1,34 @@
+# Maintainer: local build for Honor MagicBook 14 Pro (FMB-P)
+# libfprint with FPC 10a5:9924 added to the fpcmoc driver (sensor protocol
+# is identical to the already-supported 9524/9B24 family).
+pkgname=libfprint-fmbp
+pkgver=1.94.10
+pkgrel=1
+pkgdesc="libfprint with Honor MagicBook FMB-P fingerprint sensor (FPC 10a5:9924)"
+arch=('x86_64')
+url="https://gitlab.freedesktop.org/libfprint/libfprint"
+license=('LGPL-2.1-or-later')
+depends=('libgusb' 'nss' 'pixman' 'glib2')
+makedepends=('meson' 'ninja' 'git' 'cmake' 'glib2-devel')
+provides=("libfprint=$pkgver" 'libfprint-2.so')
+conflicts=('libfprint')
+source=("git+https://gitlab.freedesktop.org/libfprint/libfprint.git"
+        "fmbp-fpc-9924.patch")
+sha256sums=('SKIP' 'SKIP')
+
+prepare() {
+  cd libfprint
+  patch -p1 < ../fmbp-fpc-9924.patch
+}
+
+build() {
+  arch-meson libfprint build \
+    -Ddoc=false \
+    -Dintrospection=false \
+    -Dgtk-examples=false
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}
