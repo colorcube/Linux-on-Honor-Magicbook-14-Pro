@@ -99,7 +99,7 @@ precise-touch/vendor driver will power the controller itself. Windows' driver
 does. Linux's generic `i2c_hid_acpi` does **not** drive vendor GPIOs, so the
 controller stays unpowered and never ACKs on I²C.
 
-→ **Our fix** (`fixes/touchscreen/`) is precisely the missing vendor step: drive
+→ **Our fix** (`fixes/legacy/touchscreen-acpi-call/`, now superseded by the DSDT PowerResource in `dsdt/`) is precisely the missing vendor step: drive
 the GPIO lines high and call the panel's `_ON`, then bind `i2c_hid_acpi`. Also
 note `_HID` is literally `"XXXX0000"` until `_INI` sets it to `"FTSC1000"` when
 `TPLT==1` — so the device is invisible until init runs, another reason a clean
@@ -142,7 +142,7 @@ A USB device enumerates entirely from its own descriptors — **no ACPI, no
 `_DSM`, no `_PS0` involved at all.** So there was never anything to "miss" in
 firmware; the only place to fix it is the USB driver.
 
-→ **Our fix** (`fixes/fingerprint/`) is a `libfprint`/`fpcmoc` patch: register
+→ **Our fix** (`fixes/legacy/libfprint-identity-fallback/`, now superseded by `fixes/libfprint/` (MR !666)) is a `libfprint`/`fpcmoc` patch: register
 `10A5:9924` and trust the on-chip match for this firmware's `0x4` identity
 token. Windows simply ships FPC's signed USB driver, which already knows the id.
 
@@ -184,7 +184,7 @@ driver. We recovered it by diffing EC RAM:
 | charge stop % | `0x81` |
 | threshold enable flags | `0x85`, `0x87` |
 
-→ **Our fixes**: `fixes/fan/` (`honor-fmbp-hwmon` reads `0x2C–0x2F`) and
+→ **Our fixes**: `fixes/honor-fmbp-hwmon/` (`honor-fmbp-hwmon` reads `0x2C–0x2F`) and
 `fixes/battery/` (thresholds via `huawei-wmi`, which flips `0x80/0x81/0x85/0x87`).
 
 ---

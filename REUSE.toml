@@ -6,7 +6,7 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors (see CONTRIBUTORS.md)"
 SPDX-License-Identifier = "GPL-2.0-or-later"
 [[annotations]]
-path = ["**/*.md", "docs/**"]
+path = ["**/*.md", "docs/**", ".github/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors (see CONTRIBUTORS.md)"
 SPDX-License-Identifier = "CC-BY-4.0"

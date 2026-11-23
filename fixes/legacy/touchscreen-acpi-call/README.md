@@ -1,3 +1,6 @@
+> **Legacy:** superseded by the DSDT PowerResource in [`dsdt/`](../../../dsdt/), which needs no `acpi_call`.
+> This workaround stopped working on kernel 7.3, where the `acpi_call` DKMS module no longer builds. Kept for reference.
+
 # Touchscreen (FocalTech FTSC1000) — working fix
 
 Resolves issue #5 / #20.

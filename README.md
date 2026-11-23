@@ -1,143 +1,91 @@
-# Linux on Honor Magicbook 14 Pro
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+# Linux on HONOR MagicBook Pro 14 (2025, FMB-P)
 
-This repository contains a record of all the steps required to get the Honor Magicbook 14 Pro laptop working with Linux.
+Fixes, drivers and documentation for running Linux on the **HONOR MagicBook Pro 14
+2025** (`FMB-P`, Intel Core Ultra "Arrow Lake-H"). This collection brings together the
+work of many people from the [issues](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues),
+forks and companion projects. See [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
-While issues (and solutions) can be discussed and tracked in this repository, its purpose is not to provide code, but rather to organize things and provide the necessary information needed to run Linux on this device.
-
+With the fixes here, **everything except a few cosmetic details works**: touchpad,
+touchscreen, keyboard backlight, Fn keys, fan readout, fingerprint reader and charge
+limit.
 
 ## Status
 
-Since october 2025 it is possible to run Linux as a daily driver by appliying some tweaks.
+Tested on BIOS 1.13 (global), Fedora 44, kernel 7.3. Details:
+[docs/testing.md](docs/testing.md).
 
-The main problem is that the BIOS (v1.13) contains faulty ACPI tables (DSDT). 
-These tables provide information about the computer's hardware so that Linux can find and use the hardware components. 
-This works if the ACPI tables are correct and Linux has drivers for the hardware. Since the current tables are not correct, Linux cannot find all of the hardware.
+| Component | Stock kernel ≥ 7.0 | With this repo | Details |
+|---|---|---|---|
+| Boot, NVMe, keyboard | ✅ (keyboard since 6.19) | ✅ | [keyboard](docs/hardware/keyboard.md) |
+| Touchpad, USB-C, battery info, thermals | ❌ firmware DSDT aborts loading | ✅ DSDT override | [dsdt/](dsdt/) |
+| Touchscreen (FocalTech FTSC1000) | ❌ never powered | ✅ DSDT override + udev | [dsdt/](dsdt/), [fixes/udev/](fixes/udev/) |
+| Screen jumps dark/bright (touchpad ghost keys) | ❌ | ✅ hwdb | [fixes/udev/](fixes/udev/) |
+| Fn keys (touchpad, camera, Fn+P, Fn+R, backlight) | partly | ✅ DKMS | [fixes/huawei-wmi-dkms/](fixes/huawei-wmi-dkms/) |
+| Keyboard backlight | ❌ | ✅ DKMS | [fixes/honor-fmbp-kbdlight/](fixes/honor-fmbp-kbdlight/) |
+| Fan RPM in `sensors` | ❌ (the EC controls the fans) | ✅ DKMS | [fixes/honor-fmbp-hwmon/](fixes/honor-fmbp-hwmon/) |
+| Fingerprint FPC `10a5:9924` | ❌ | ✅ patched libfprint | [fixes/libfprint/](fixes/libfprint/) |
+| Fingerprint EgisTec `1c7a:05aa` | ❌ | external fork | [fixes/libfprint/](fixes/libfprint/) |
+| Charge limit | stored but ignored | ✅ preset pairs 40/70, 70/90, 95/100 | [fixes/battery/](fixes/battery/) |
+| Caps-Lock and mic-mute LEDs | ✅ | ✅ | [keyboard](docs/hardware/keyboard.md) |
+| Wi-Fi, Bluetooth, audio, webcam, lid, suspend (s2idle) | ✅ | ✅ | [docs/hardware/](docs/hardware/) |
+| Power button | ✅ hold ~0.5 s | ✅ | [power button](docs/hardware/power-button.md) |
+| HDR in GNOME/KDE | ❌ | EDID override (optional) | [display](docs/hardware/display.md) |
+| Performance mode (Fn+P, 50 W clamp) | ❌ | research | [performance](docs/hardware/performance.md) |
+| S3 deep sleep | ❌ hardware is S0ix-only | hibernate works | [sleep](docs/hardware/sleep.md) |
+| Wi-Fi fails after warm reboot | open (#26) | — | [wifi](docs/hardware/wifi.md) |
+| IR camera / face unlock | — no IR camera in the 2025 model | — | |
 
-Fortunately there's a patch for this and other problems.
+## Quickstart (Fedora)
 
-### What works
+Disable **Secure Boot** in the firmware (F2) first. Then:
 
-- :heavy_check_mark: Native screen resolution
-- :heavy_check_mark: Graphics hardware
-- :heavy_check_mark: Wifi
-- :heavy_check_mark: USB-C (screen, ethernet, hid, etc…)
-- :heavy_check_mark: Fn Keys (some)
-- :heavy_check_mark: Touchpad
-- :heavy_check_mark: Audio
-- :heavy_check_mark: Bluetooth
-- :heavy_check_mark: Webcam
-- :heavy_check_mark: Fan control
-- :heavy_check_mark: Lid switch
-- :heavy_check_mark: Suspend/Resume
-
-### What works (with tweaks)
-
-Working scripts/patches for the items below are collected in [`fixes/`](fixes/).
-
-- :heavy_check_mark: Keyboard, Works with kernel 6.19: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1)
-- :heavy_check_mark: Fingerprint Reader (FPC 10a5:9924), libfprint patch: [`fixes/fingerprint`](fixes/fingerprint/) — [#6](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/6)
-- :heavy_check_mark: Touchscreen (FocalTech FTSC1000), GPIO power + acpi_call: [`fixes/touchscreen`](fixes/touchscreen/) — [#5](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/5)
-- :heavy_check_mark: Fn Keys, patched huawei-wmi: [`fixes/fn-keys`](fixes/fn-keys/) — [#4](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/4)
-- :heavy_check_mark: Fan speed readout, hwmon module: [`fixes/fan`](fixes/fan/) — [#7](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/7)
-- :heavy_check_mark: Battery charge thresholds — the EC only enforces PC Manager **preset pairs** (40/70, 70/90, 95/100); custom pairs are silently ignored: [`fixes/battery`](fixes/battery/) — [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10) [#17](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/17)
-- :heavy_check_mark: Caps-Lock LED (kernel ≥ 7.0) and Mic-mute key LED: [#9](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/9)
-- :heavy_check_mark: Performance profiles via power-profiles-daemon (CPU EPP); Fn+P switches the EC platform mode
-- :heavy_check_mark: Hibernate / suspend-then-hibernate (S4) — works; useful since S3 is unavailable
-
-### What doesn't work
-
-- :x: Power button, See: [#8](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/8)
-- :x: S3 deep sleep — vestigial on Arrow Lake-H (Windows has no S3 either); only s2idle. See [`fixes/README.md`](fixes/README.md)
-- :x: IR camera / face unlock — not present in hardware on the 2025 model (RGB webcam only)
-
-### Tested Linux Distributions
-
-#### Fedora 43, 44
-
-Kernel 6.18, 6.19 (Keyboard works)
-
-## Quickstart
-
-### 1. Keyboard and Sound
-
-If your kernel is below 7.0 you might need following boot parameter to the kernel commandline to fix keyboard and sound:
-
-```
-i8042.dumbkbd=1 snd-intel-dspcfg.dsp_driver=3 snd-hda-intel.model=generic
+```bash
+git clone https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro.git
+cd Linux-on-Honor-Magicbook-14-Pro
+sudo ./install.sh          # dsdt udev wmi hwmon kbdlight battery
+sudo reboot
+./install.sh --status
 ```
 
-See: [#1](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/1) [#2](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/2)
+You'll find the fingerprint reader, a fresh install and more details in
+[docs/install/fedora.md](docs/install/fedora.md). Fedora packages (COPR) are in
+preparation.
 
-How to set boot parameter: [google](https://www.google.com/search?q=How+do+I+add+a+linux+kernel+boot+parameter)
+**Other distributions:**
+- **Ubuntu:** use drphilth's PPA ([honor-magicbook-pro-14-ubuntu](https://github.com/drphilth/honor-magicbook-pro-14-ubuntu)).
+- **Fedora-based with Secure Boot:** [Evernight Vista](https://copr.fedorainfracloud.org/coprs/march7thdev/Evernight-Vista-Kernel)
+  ships a kernel with the DSDT built in.
+- **Others:** `install.sh` also supports pacman/mkinitcpio and apt/initramfs-tools on a
+  best-effort basis.
 
-### 2. Touchpad
+We're happy to build packages for other distributions if someone can test them, so
+please open an issue.
 
-Look here for instructions to install a patched DSDT to make the touchpad work:
+**Installing from scratch / live USB:** [docs/install/live-usb.md](docs/install/live-usb.md).
 
-https://github.com/denis-bb/honor-fmb-p-dsdt
+## Reporting problems
 
-### 3. Screen brightness
+Please attach the output of `sudo tools/honor-fmbp-diag` and state the BIOS version and
+whether your unit is global or Chinese. Check [docs/testing.md](docs/testing.md) first,
+and add your own results there.
 
-With some kernel version a weird device is present which changes screen brightnes.
-Disable the weird device which causes the screen to go dark and to full brightness:
+## Machine
 
-Add a udev rule to disable the device by adding following file: [/etc/udev/rules.d/99-ignore-touchpad-device.rules](etc/udev/rules.d/99-ignore-touchpad-device.rules)
+HONOR `FMB-P` (versions M1020/M1030, SKU C100). Specs:
+[honor.com](https://www.honor.com/global/laptops/honor-magicbook-pro-14/spec/).
+BIOS history: [docs/bios.md](docs/bios.md). Hardware probe:
+[linux-hardware.org](https://linux-hardware.org/?probe=1657e7ed5c).
 
-And reboot.
+## License
 
-See: [#3](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/3)
-
-### 4. Other hardware (touchscreen, Fn keys, fan readout, fingerprint, battery)
-
-See the [`fixes/`](fixes/) directory for working scripts, a small hwmon kernel
-module, and patches, each with its own README and install steps.
-
-### 5. One-shot install (fresh system)
-
-[`install.sh`](install.sh) applies everything from a fresh install — including
-the DSDT override, built from **your own** firmware dump with the
-[denis-bb patch](https://github.com/denis-bb/honor-fmb-p-dsdt) and hard
-safety checks (aborts if the patch doesn't apply or doesn't recompile
-cleanly; refuses to run under Secure Boot; keeps stock-ACPI rescue paths):
-
-```sh
-sudo ./install.sh            # everything; or --only battery,driver,…
-sudo ./install.sh --status   # what's installed
-sudo ./install.sh --uninstall
-```
-
-Verified on CachyOS (Arch family, mkinitcpio/limine). The dracut (Fedora) and
-initramfs-tools+GRUB (Debian/Ubuntu) branches are best-effort — review them
-before trusting, and report back. Fingerprint stays manual
-([`fixes/fingerprint/`](fixes/fingerprint/) — needs a libfprint rebuild).
-
-## Problems and how to solve them
-
-Have a look at the [Github issues](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues).
-
-
-## Machine Infos
-
-Specs: [honor.com](https://www.honor.com/global/laptops/honor-magicbook-pro-14/spec/)
-
-Manufacturer: HONOR<br>
-Product Name: FMB-P<br>
-Version: M1030<br>
-SKU Number: C100<br>
-Family: HONOR MagicBook
-
-### Latest Bios
-
-BIOS version 1.13 (release date 05/08/2025).
-BIOS 1.16 has also been tested — same DSDT bug, the same patched DSDT approach
-applies (the `\_S3` package is likewise present-but-gated; see [`fixes/`](fixes/)).
-
-### Hardware
-
-Hardware detected by hw-probe: https://linux-hardware.org/?probe=1657e7ed5c
-
-Have a look at the [Github issues](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues) for information and discussion of specific hardware devices.
+Code is GPL-2.0 (`-or-later`, or `-only` where the source requires it); the libfprint
+patch is LGPL-2.1-or-later; documentation is CC-BY-4.0. Prebuilt DSDT tables are
+minimally patched derivatives of HONOR's firmware for owners of this hardware. Per-file
+details are in [REUSE.toml](REUSE.toml) and the SPDX headers.
 
 ## Resources
 
-- [A discussion about this machine which got things going](https://discussion.fedoraproject.org/t/fedora42-workstation-work-badly-in-honor-magicbook-14-pro)
+- [Fedora discussion that got things going](https://discussion.fedoraproject.org/t/fedora42-workstation-work-badly-in-honor-magicbook-14-pro/154790)
+- [denis-bb/honor-fmb-p-dsdt](https://github.com/denis-bb/honor-fmb-p-dsdt), the first DSDT fix
+- [drphilth/honor-magicbook-pro-14-ubuntu](https://github.com/drphilth/honor-magicbook-pro-14-ubuntu), Ubuntu packages
