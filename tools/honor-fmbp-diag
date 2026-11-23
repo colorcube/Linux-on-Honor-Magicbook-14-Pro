@@ -142,7 +142,8 @@ done
 for f in /etc/udev/rules.d/*honor* /etc/udev/rules.d/*touchpad* /etc/udev/rules.d/*gxt* \
          /etc/udev/hwdb.d/*honor* /etc/udev/hwdb.d/*huawei* /etc/udev/hwdb.d/*gxt* \
          /usr/lib/udev/rules.d/*honor* /usr/lib/udev/hwdb.d/*honor* \
-         /etc/dracut.conf.d/*honor* /etc/dracut.conf.d/*acpi* /boot/dsdt.aml /boot/*acpi*.img; do
+         /etc/dracut.conf.d/*honor* /etc/dracut.conf.d/*acpi* /usr/lib/dracut/dracut.conf.d/*honor* \
+         /usr/lib/honor-fmbp/acpi/dsdt.aml /boot/dsdt.aml /boot/*acpi*.img; do
     [[ -e $f ]] && row "file" "\`$f\`"
 done
 for u in $(systemctl list-unit-files --no-legend 2>/dev/null | awk '/honor|touchscreen|battery-threshold/{print $1}'); do
