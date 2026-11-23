@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.0
+Version:        1.0.1
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -250,5 +250,9 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.1-1
+- honor-fmbp-diag also lists the packaged dracut config and the selected DSDT
+- Built automatically by COPR from the git tag (.copr/Makefile)
+
 * Mon Nov 23 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.0-1
 - Initial package
