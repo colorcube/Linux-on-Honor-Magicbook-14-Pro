@@ -1,363 +1,333 @@
 #!/bin/bash
-# One-shot installer for the FMB-P fixes in this repo (fresh-install friendly).
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 tsukasagenesis (original installer, PR #21)
+# SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
 #
-#   sudo ./install.sh                  # install everything (asks once)
-#   sudo ./install.sh --only battery,driver
-#   sudo ./install.sh --status        # show what's installed / armed
-#   sudo ./install.sh --uninstall     # remove everything (keeps backups)
+# Installer for the HONOR MagicBook Pro 14 2025 (FMB-P) fixes in this repository.
 #
-# Modules: dsdt driver fan battery touchscreen keyboard
-#   dsdt        patched DSDT override (the foundation — see fixes/dsdt/)
-#   driver      huawei-wmi DKMS with the Fn-key patch
-#   fan         honor-fmbp-hwmon DKMS (fan RPM in `sensors`)
-#   battery     charge threshold service (preset pair 70/90; see fixes/battery/)
-#   touchscreen power-on workaround service + sleep hook + inhibit rules
-#   keyboard    hwdb entry silencing the e078 atkbd spam
-# (fingerprint is manual-only: see fixes/fingerprint/)
+#   sudo ./install.sh                      # install all modules (asks once)
+#   sudo ./install.sh --only udev,battery  # selected modules
+#   ./install.sh --status                  # show what is installed / active
+#   sudo ./install.sh --uninstall          # remove everything this script installed
 #
-# Tested on CachyOS (Arch family). dracut (Fedora) and initramfs-tools
-# (Debian/Ubuntu) branches are best-effort — review before trusting.
+# Modules (default: all):
+#   dsdt     corrected DSDT as early-initramfs override (NFC0 load fix + touchscreen power)
+#   udev     hwdb/udev quirks: touchpad ghost keys, e078/f8 scancodes, touchscreen ghost
+#   wmi      huawei-wmi DKMS with the FMB-P Fn-key map
+#   hwmon    fan RPM driver (DKMS)
+#   kbdlight keyboard backlight driver (DKMS)
+#   battery  charge-limit service (/etc/default/honor-fmbp-battery, preset pairs only)
+# The fingerprint reader is separate: see fixes/libfprint/.
+#
+# Options:
+#   --dsdt-source auto|own|prebuilt   auto (default): build from this machine's firmware
+#                 table if it is unmodified, otherwise use the prebuilt table for the SKU
+#   --yes          don't ask        --skip-deps   don't install packages
+#   --force        skip the DMI check (for testing only)
+#
+# Tested: Fedora 44 (dracut). Arch (mkinitcpio) and Debian/Ubuntu (initramfs-tools)
+# paths are best-effort; please report results.
 
 set -euo pipefail
 
-REPO_DIR=$(cd "$(dirname "$0")" && pwd)
-FIX="$REPO_DIR/fixes"
-DENIS_BB_COMMIT=7bf8b7b6041b625cc125e1980d7363327b56d598
-DENIS_BB_RAW="https://raw.githubusercontent.com/denis-bb/honor-fmb-p-dsdt/$DENIS_BB_COMMIT"
-ALL_MODULES="dsdt driver fan battery touchscreen keyboard"
+REPO=$(cd "$(dirname "$0")" && pwd)
+FIX=$REPO/fixes
+LIB=/usr/lib/honor-fmbp
+STATE=/var/lib/honor-fmbp
+BACKUP=$STATE/backup
+ALL_MODULES="dsdt udev wmi hwmon kbdlight battery"
+THR=/sys/devices/platform/huawei-wmi/charge_control_thresholds
 
 log()  { printf '\033[1;32m==>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
-# ---------------------------------------------------------------- detection
+backup() { # move a file we replace or retire into $BACKUP (never next to the original)
+    local f=$1
+    [[ -e $f ]] || return 0
+    install -d "$BACKUP$(dirname "$f")"
+    mv "$f" "$BACKUP$f.$(date +%Y%m%d%H%M%S)"
+    log "  moved $f to $BACKUP"
+}
+
+# ------------------------------------------------------------------ detection
 
 detect_platform() {
-    local product family
+    local vendor product
+    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
     product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
-    family=$(cat /sys/class/dmi/id/product_family 2>/dev/null || true)
-    if [[ $product != FMB-P && $family != *MagicBook* ]]; then
-        [[ $FORCE = 1 ]] || die "this doesn't look like an Honor MagicBook FMB-P (product='$product'). Use --force to override."
-        warn "DMI mismatch (product='$product') — continuing because of --force"
+    if [[ $vendor != HONOR || $product != FMB-P ]]; then
+        [[ $FORCE = 1 ]] || die "not an HONOR FMB-P (DMI: '$vendor' / '$product'). Use --force to override."
+        warn "DMI mismatch ('$vendor' / '$product'), continuing because of --force"
     fi
-
-    if command -v pacman >/dev/null;      then PKG=pacman
-    elif command -v dnf >/dev/null;       then PKG=dnf
-    elif command -v apt-get >/dev/null;   then PKG=apt
-    else die "no supported package manager found (pacman/dnf/apt)"; fi
-
-    if command -v mkinitcpio >/dev/null;        then INITRAMFS=mkinitcpio
-    elif command -v dracut >/dev/null;          then INITRAMFS=dracut
+    if   command -v dnf >/dev/null;     then PKG=dnf
+    elif command -v pacman >/dev/null;  then PKG=pacman
+    elif command -v apt-get >/dev/null; then PKG=apt
+    else PKG=none; fi
+    if   command -v dracut >/dev/null && [[ ! -d /etc/initramfs-tools ]]; then INITRAMFS=dracut
+    elif command -v mkinitcpio >/dev/null;       then INITRAMFS=mkinitcpio
     elif command -v update-initramfs >/dev/null; then INITRAMFS=initramfs-tools
     else INITRAMFS=none; fi
-
-    [[ $PKG = pacman ]] || warn "only the Arch-family path is verified on real hardware; $PKG/$INITRAMFS support is best-effort"
+    [[ $PKG = dnf ]] || warn "only Fedora is verified on hardware; $PKG/$INITRAMFS is best-effort"
 }
 
 secure_boot_on() {
-    local var
-    var=$(ls /sys/firmware/efi/efivars/SecureBoot-* 2>/dev/null | head -1) || return 1
-    [[ -n $var ]] && [[ $(od -An -tu1 -j4 -N1 "$var" 2>/dev/null | tr -d ' ') = 1 ]]
+    local v; v=$(ls /sys/firmware/efi/efivars/SecureBoot-* 2>/dev/null | head -1)
+    [[ -n $v && $(od -An -tu1 -j4 -N1 "$v" | tr -d ' ') = 1 ]]
 }
 
-# ------------------------------------------------------------- dependencies
+dsdt_rev()  { od -An -tu4 -j24 -N4 /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -d ' '; }
+dsdt_sku()  {
+    local hex; hex=$(od -An -v -tx1 /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -s ' \n' ' ')
+    if   grep -q '0c 18 90 e0 67' <<<"$hex"; then echo global
+    elif grep -q '0c 18 90 e1 67' <<<"$hex"; then echo chinese
+    else echo unknown; fi
+}
+
+# ------------------------------------------------------------------ deps
 
 install_deps() {
-    log "Installing dependencies ($PKG)"
+    local mods=" $MODULES " pk=()
+    [[ $mods = *" dsdt "* ]] && pk+=(acpica-tools python3 perl cpio)
+    [[ $mods =~ \ (wmi|hwmon|kbdlight)\  ]] && pk+=(dkms)
+    [[ ${#pk[@]} -gt 0 ]] || return 0
+    log "Installing dependencies ($PKG): ${pk[*]}"
     case $PKG in
-    pacman)
-        pacman -S --needed --noconfirm dkms acpica cpio patch curl libgpiod
-        # headers for every installed kernel, the Arch way
-        local pb
-        for pb in /usr/lib/modules/*/pkgbase; do
-            [[ -f $pb ]] && pacman -S --needed --noconfirm "$(cat "$pb")-headers"
-        done
-        # acpi_call for the touchscreen workaround
-        pacman -S --needed --noconfirm acpi_call-dkms 2>/dev/null \
-            || pacman -S --needed --noconfirm acpi_call 2>/dev/null \
-            || warn "couldn't install acpi_call — touchscreen fix needs it"
-        ;;
-    dnf)
-        dnf install -y dkms kernel-devel acpica-tools cpio patch curl libgpiod-utils git make gcc
-        # acpi_call isn't packaged in Fedora — build it via DKMS from git
-        if ! grep -q acpi_call <<<"$(dkms status 2>/dev/null || true)"; then
-            log "Building acpi_call from source (not packaged in Fedora)"
-            rm -rf /usr/src/acpi_call-1.2.2
-            git clone --depth 1 https://github.com/nix-community/acpi_call /usr/src/acpi_call-1.2.2 \
-                && dkms install acpi_call/1.2.2 \
-                || warn "acpi_call build failed — touchscreen fix needs it"
-        fi
-        ;;
-    apt)
-        apt-get update
-        apt-get install -y dkms "linux-headers-$(uname -r)" acpica-tools cpio patch curl gpiod acpi-call-dkms
-        ;;
+    dnf)    dnf install -y "${pk[@]}" "kernel-devel-$(uname -r)" ;;
+    pacman) pacman -S --needed --noconfirm "${pk[@]/acpica-tools/acpica}" linux-headers ;;
+    apt)    apt-get install -y "${pk[@]}" "linux-headers-$(uname -r)" ;;
+    *)      warn "unknown package manager — install ${pk[*]} and kernel headers yourself" ;;
     esac
 }
 
-# ---------------------------------------------------------------- dsdt
+regen_initramfs() {
+    case $INITRAMFS in
+    dracut)          dracut --force --regenerate-all ;;
+    mkinitcpio)      if command -v limine-mkinitcpio >/dev/null; then limine-mkinitcpio; else mkinitcpio -P; fi ;;
+    initramfs-tools) update-initramfs -u -k all ;;
+    *)               warn "unknown initramfs generator: the DSDT is installed in $LIB/acpi but NOT wired into boot" ;;
+    esac
+}
+
+# ------------------------------------------------------------------ dsdt
+
+retire_old_dsdt_setups() {
+    # GRUB-loaded tables (acpi /dsdt.aml) override ours and load the old table for every entry
+    local f
+    for f in /etc/grub.d/40_custom /boot/grub2/custom.cfg /boot/grub/custom.cfg; do
+        [[ -f $f ]] && grep -q -E '^[[:space:]]*acpi[[:space:]]+.*\.aml' "$f" || continue
+        warn "found a GRUB 'acpi' DSDT line in $f — disabling it (backup in $BACKUP)"
+        install -d "$BACKUP$(dirname "$f")"; cp -a "$f" "$BACKUP$f.$(date +%Y%m%d%H%M%S)"
+        sed -i -E 's/^([[:space:]]*acpi[[:space:]]+.*\.aml)/# disabled by honor-fmbp install.sh: \1/' "$f"
+        GRUB_CHANGED=1
+    done
+    # earlier installer versions (PR #21)
+    backup /etc/dracut.conf.d/99-fmbp-acpi-override.conf
+    [[ -d /etc/acpi-override ]] && { install -d "$BACKUP/etc"; mv /etc/acpi-override "$BACKUP/etc/acpi-override.$(date +%Y%m%d%H%M%S)"; }
+    backup /boot/fmbp-acpi-override.cpio
+    sed -i '/^GRUB_EARLY_INITRD_LINUX_CUSTOM="fmbp-acpi-override.cpio"/d' /etc/default/grub 2>/dev/null || true
+    # acpi_call touchscreen workarounds are obsolete with the DSDT power resource
+    local u
+    for u in honor-touchscreen-fix.service honor-touchscreen.service; do
+        if systemctl list-unit-files "$u" >/dev/null 2>&1 && systemctl is-enabled "$u" >/dev/null 2>&1; then
+            warn "disabling obsolete $u (touchscreen is powered by the DSDT now)"
+            systemctl disable --now "$u" || true
+        fi
+    done
+}
+
+update_grub() {
+    [[ ${GRUB_CHANGED:-0} = 1 ]] || return 0
+    if   [[ -f /boot/grub2/grub.cfg ]] && command -v grub2-mkconfig >/dev/null; then grub2-mkconfig -o /boot/grub2/grub.cfg
+    elif command -v update-grub >/dev/null; then update-grub
+    elif [[ -f /boot/grub/grub.cfg ]] && command -v grub-mkconfig >/dev/null; then grub-mkconfig -o /boot/grub/grub.cfg
+    else warn "regenerate your GRUB config yourself"; fi
+}
 
 dsdt_install() {
-    if secure_boot_on; then
-        die "Secure Boot is enabled: kernel lockdown ignores ACPI table overrides (and the DKMS modules are unsigned). Disable Secure Boot first."
+    secure_boot_on && die "Secure Boot is on: kernel lockdown may ignore ACPI table overrides. Disable it first (see dsdt/README.md)."
+    local sku rev src=$DSDT_SOURCE out
+    sku=$(dsdt_sku); rev=$(dsdt_rev)
+    [[ $sku != unknown ]] || die "unknown BIOS SKU — please report with tools/honor-fmbp-diag"
+    if [[ $src = auto ]]; then
+        [[ $rev = 2 ]] && src=own || src=prebuilt
     fi
-    local wd aml
-    wd=$(mktemp -d)
-
-    log "Dumping your ACPI tables"
-    ( cd "$wd" && acpidump -b )
-    [[ -f $wd/dsdt.dat ]] || die "acpidump produced no dsdt.dat"
-
-    if ! grep -q NFC0 "$wd/dsdt.dat"; then
-        log "DSDT has no NFC0 device — already patched or BIOS is fixed. Skipping."
-        rm -rf "$wd"; return 0
-    fi
-
-    log "Decompiling DSDT (this can take a moment)"
-    ( cd "$wd" && iasl -e ssdt*.dat -d dsdt.dat >/dev/null 2>&1 ) || true
-    if [[ ! -s $wd/dsdt.dsl ]]; then
-        # some SSDTs duplicate HS03._UPC and break -e resolution; retry without them
-        local keep=() f
-        for f in "$wd"/ssdt*.dat; do grep -q HS03 "$f" || keep+=("$f"); done
-        ( cd "$wd" && rm -f dsdt.dsl && iasl -e "${keep[@]}" -d dsdt.dat >/dev/null 2>&1 ) || true
-    fi
-    [[ -s $wd/dsdt.dsl ]] || die "could not decompile your DSDT — do it manually per fixes/dsdt/README.md"
-
-    log "Fetching denis-bb patch (pinned $DENIS_BB_COMMIT)"
-    curl -fsSL "$DENIS_BB_RAW/dsdt.global.patch" -o "$wd/dsdt.global.patch" \
-        || die "could not download the DSDT patch (network?)"
-
-    log "Applying patch to YOUR decompiled DSDT"
-    if patch --dry-run --forward "$wd/dsdt.dsl" "$wd/dsdt.global.patch" >/dev/null 2>&1; then
-        patch --forward "$wd/dsdt.dsl" "$wd/dsdt.global.patch" >/dev/null
-    else
-        # fallback: if our decompile textually matches denis-bb's original
-        # (ignoring the iasl header comment), their pre-patched dsl is safe
-        warn "patch didn't apply to your decompile — comparing against denis-bb's original"
-        curl -fsSL "$DENIS_BB_RAW/original/dsdt.global.dsl" -o "$wd/theirs-orig.dsl" || die "download failed"
-        if diff -q <(sed -n '/^DefinitionBlock/,$p' "$wd/dsdt.dsl") \
-                   <(sed -n '/^DefinitionBlock/,$p' "$wd/theirs-orig.dsl") >/dev/null; then
-            curl -fsSL "$DENIS_BB_RAW/patched/dsdt.global.dsl" -o "$wd/dsdt.dsl" || die "download failed"
-        else
-            die "your DSDT differs from the known original (new BIOS?). Patch it manually per fixes/dsdt/README.md and do NOT force this."
-        fi
-    fi
-
-    grep -q 'Device (NFC0)' "$wd/dsdt.dsl" && die "NFC0 still present after patching — aborting"
-
-    log "Compiling patched DSDT"
-    ( cd "$wd" && iasl -ve -p dsdt-patched dsdt.dsl >/dev/null ) \
-        || die "patched DSDT does not compile cleanly — aborting (nothing was installed)"
-    aml=$wd/dsdt-patched.aml
-    [[ -s $aml ]] || die "no compiled AML produced"
-
-    log "Installing override to /etc/acpi-override"
-    install -d /etc/acpi-override/backup /etc/acpi-override/kernel/firmware/acpi
-    cp "$wd"/dsdt.dat "/etc/acpi-override/backup/dsdt-original-$(date +%Y%m%d).dat"
-    install -m644 "$aml" /etc/acpi-override/dsdt.aml
-    cp /etc/acpi-override/dsdt.aml /etc/acpi-override/kernel/firmware/acpi/dsdt.aml
-    ( cd /etc/acpi-override && find kernel | cpio -H newc -o --quiet > acpi-override.cpio )
-
-    case $INITRAMFS in
-    mkinitcpio)
-        install -Dm755 "$FIX/dsdt/10-acpi-override" /etc/initcpio/post/10-acpi-override
-        log "Regenerating initramfs (LTS images stay stock ACPI = rescue entries)"
-        if command -v limine-mkinitcpio >/dev/null; then limine-mkinitcpio; else mkinitcpio -P; fi
-        ;;
-    dracut)
-        local img="/boot/initramfs-$(uname -r).img"
-        [[ -f $img && ! -f $img.stock-acpi ]] && cp "$img" "$img.stock-acpi" \
-            && log "Rescue copy kept at $img.stock-acpi (boot it by editing the initrd line)"
-        printf 'acpi_override="yes"\nacpi_table_dir="/etc/acpi-override"\n' \
-            > /etc/dracut.conf.d/99-fmbp-acpi-override.conf
-        dracut -f
-        ;;
-    initramfs-tools)
-        install -m644 /etc/acpi-override/acpi-override.cpio /boot/fmbp-acpi-override.cpio
-        if ! grep -q GRUB_EARLY_INITRD_LINUX_CUSTOM /etc/default/grub; then
-            echo 'GRUB_EARLY_INITRD_LINUX_CUSTOM="fmbp-acpi-override.cpio"' >> /etc/default/grub
-        else
-            sed -i 's/^GRUB_EARLY_INITRD_LINUX_CUSTOM=.*/GRUB_EARLY_INITRD_LINUX_CUSTOM="fmbp-acpi-override.cpio"/' /etc/default/grub
-        fi
-        update-grub
-        warn "rescue path: at the GRUB prompt, edit the entry and delete fmbp-acpi-override.cpio from the initrd line"
-        ;;
-    *)  warn "unknown initramfs system — override built in /etc/acpi-override but NOT wired into boot" ;;
+    install -d "$LIB/acpi" "$STATE"
+    case $src in
+    own)
+        [[ $rev = 2 ]] || die "the firmware table in /sys is already overridden (OEM rev $rev); use --dsdt-source prebuilt"
+        log "Building the DSDT from this machine's firmware ($sku)"
+        out=$(mktemp -d)
+        "$REPO/dsdt/build.sh" --out "$out" --no-chinese
+        install -m644 "$out/fix.patch" "$STATE/dsdt-fix.patch"
+        install -m644 "$out/dsdt.$sku.aml" "$LIB/acpi/dsdt.aml"
+        rm -rf "$out" ;;
+    prebuilt)
+        log "Using the prebuilt $sku DSDT (an override is active, so the stock table isn't readable)"
+        install -m644 "$REPO/dsdt/prebuilt/dsdt.$sku.aml" "$LIB/acpi/dsdt.aml" ;;
+    *) die "unknown --dsdt-source '$src'" ;;
     esac
-    rm -rf "$wd"
-    log "DSDT override installed — takes effect after reboot"
+    echo "$sku $src $(date +%F)" > "$STATE/dsdt.info"
+
+    retire_old_dsdt_setups
+    case $INITRAMFS in
+    dracut)
+        install -Dm644 "$REPO/dsdt/initramfs/dracut-10-honor-fmbp-dsdt.conf" /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf ;;
+    mkinitcpio)
+        local w; w=$(mktemp -d); install -d "$w/kernel/firmware/acpi"
+        cp "$LIB/acpi/dsdt.aml" "$w/kernel/firmware/acpi/"
+        ( cd "$w" && find kernel | LC_ALL=C sort | cpio -o -H newc -R 0:0 --quiet ) > "$LIB/acpi-override.cpio"
+        rm -rf "$w"
+        install -Dm755 "$REPO/dsdt/initramfs/mkinitcpio-10-acpi-override" /etc/initcpio/post/10-acpi-override ;;
+    initramfs-tools)
+        install -Dm755 "$REPO/dsdt/initramfs/initramfs-tools-honor-fmbp-dsdt" /etc/initramfs-tools/hooks/honor-fmbp-dsdt ;;
+    esac
+    log "Regenerating initramfs"
+    regen_initramfs
+    update_grub
+    log "DSDT installed ($sku, $src) — active after reboot. Check: journalctl -k -b | grep 'Table Upgrade'"
+    log "Rescue: boot an entry whose initramfs predates this (e.g. Fedora's '0-rescue' entry) or run --uninstall."
 }
 
 dsdt_uninstall() {
-    rm -f /etc/initcpio/post/10-acpi-override /etc/dracut.conf.d/99-fmbp-acpi-override.conf /boot/fmbp-acpi-override.cpio
-    sed -i '/^GRUB_EARLY_INITRD_LINUX_CUSTOM="fmbp-acpi-override.cpio"/d' /etc/default/grub 2>/dev/null || true
-    case $INITRAMFS in
-    mkinitcpio)      if command -v limine-mkinitcpio >/dev/null; then limine-mkinitcpio; else mkinitcpio -P; fi ;;
-    dracut)          dracut -f ;;
-    initramfs-tools) update-grub ;;
-    esac
-    log "DSDT override unwired (files kept in /etc/acpi-override, incl. backups)"
+    rm -f /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf /etc/initcpio/post/10-acpi-override \
+          /etc/initramfs-tools/hooks/honor-fmbp-dsdt "$LIB/acpi-override.cpio" "$STATE/dsdt.info"
+    rm -rf "$LIB/acpi"
+    regen_initramfs
+    log "DSDT override removed (GRUB lines disabled by the installer stay disabled; backups in $BACKUP)"
 }
 
-# ---------------------------------------------------------------- dkms bits
-
-dkms_module_install() { # $1 srcdir  $2 name  $3 version
-    rm -rf "/usr/src/$2-$3"
-    cp -r "$1" "/usr/src/$2-$3"
-    rm -f "/usr/src/$2-$3/README.md"
-    local st; st=$(dkms status 2>/dev/null || true)
-    grep -q "^$2/$3.*installed" <<<"$st" || dkms install "$2/$3"
+dsdt_status() {
+    if [[ -f $LIB/acpi/dsdt.aml ]]; then
+        local active="not active yet (reboot)"
+        local klog; klog=$(journalctl -k -b -q 2>/dev/null || dmesg 2>/dev/null || true)
+        grep -q 'Table Upgrade: override \[DSDT' <<<"$klog" && active="active"
+        echo "installed ($(cat "$STATE/dsdt.info" 2>/dev/null)), $active"
+    else echo "-"; fi
 }
 
-driver_install() {
-    log "Installing patched huawei-wmi (Fn keys)"
-    dkms_module_install "$FIX/huawei-wmi-dkms" huawei-wmi-fmbp 1.0
-    modprobe -r huawei_wmi 2>/dev/null || true
-    modprobe huawei-wmi || warn "module load failed — will load on next boot"
-}
-driver_uninstall() {
-    dkms remove huawei-wmi-fmbp/1.0 --all 2>/dev/null || true
-    rm -rf /usr/src/huawei-wmi-fmbp-1.0
-}
+# ------------------------------------------------------------------ udev
 
-fan_install() {
-    log "Installing fan hwmon module"
-    dkms_module_install "$FIX/fan" honor-fmbp-hwmon 1.0
-    echo honor-fmbp-hwmon > /etc/modules-load.d/honor-fmbp-hwmon.conf
-    modprobe honor-fmbp-hwmon 2>/dev/null || warn "fan module load failed — will load on next boot"
+UDEV_FILES="hwdb.d/61-honor-fmbp-keyboard.hwdb hwdb.d/61-honor-fmbp-touchpad.hwdb rules.d/99-honor-fmbp-touchscreen.rules"
+udev_install() {
+    log "Installing udev/hwdb quirks"
+    local f
+    # retire the old whole-device inhibit for the touchpad ghost (replaced by the hwdb)
+    for f in /etc/udev/rules.d/99-ignore-touchpad.rules /etc/udev/rules.d/99-ignore-touchpad-device.rules; do backup "$f"; done
+    for f in $UDEV_FILES; do install -Dm644 "$FIX/udev/${f#*/}" "/etc/udev/$f"; done
+    systemd-hwdb update
+    udevadm control --reload
+    udevadm trigger -s input || true
 }
-fan_uninstall() {
-    modprobe -r honor-fmbp-hwmon 2>/dev/null || true
-    dkms remove honor-fmbp-hwmon/1.0 --all 2>/dev/null || true
-    rm -rf /usr/src/honor-fmbp-hwmon-1.0 /etc/modules-load.d/honor-fmbp-hwmon.conf
+udev_uninstall() {
+    local f; for f in $UDEV_FILES; do rm -f "/etc/udev/$f"; done
+    systemd-hwdb update; udevadm control --reload
 }
+udev_status() { [[ -f /etc/udev/hwdb.d/61-honor-fmbp-touchpad.hwdb ]] && echo installed || echo "-"; }
 
-# ---------------------------------------------------------------- the rest
+# ------------------------------------------------------------------ dkms modules
 
-battery_armed() {
-    # The EC arms itself (EC reg 0x85 = preset index 1/2/3) only for the
-    # PC Manager preset pairs 40/70, 70/90, 95/100 — anything else is
-    # stored but silently ignored. Returns 0 if enforcement is armed.
-    modprobe ec_sys 2>/dev/null || return 2
-    [[ -r /sys/kernel/debug/ec/ec0/io ]] || return 2
-    local chmd
-    chmd=$(dd if=/sys/kernel/debug/ec/ec0/io bs=1 skip=$((0x85)) count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
-    [[ -n $chmd && $chmd -ne 0 ]]
+dkms_ver() { sed -n 's/^PACKAGE_VERSION="\(.*\)"/\1/p' "$FIX/$1/dkms.conf"; }
+dkms_name() { sed -n 's/^PACKAGE_NAME="\(.*\)"/\1/p' "$FIX/$1/dkms.conf"; }
+
+dkms_add() { # $1 = dir in fixes/
+    local n v; n=$(dkms_name "$1"); v=$(dkms_ver "$1")
+    log "Installing $n/$v (DKMS)"
+    dkms remove "$n/$v" --all >/dev/null 2>&1 || true
+    rm -rf "/usr/src/$n-$v"; cp -r "$FIX/$1" "/usr/src/$n-$v"
+    dkms install "$n/$v"
 }
+dkms_del() {
+    local n v; n=$(dkms_name "$1"); v=$(dkms_ver "$1")
+    dkms remove "$n/$v" --all 2>/dev/null || true
+    rm -rf "/usr/src/$n-$v"
+}
+dkms_st() { local n st; n=$(dkms_name "$1"); st=$(dkms status "$n" 2>/dev/null || true); grep -m1 installed <<<"$st" || echo "-"; }
 
+wmi_install()      { dkms_add huawei-wmi-dkms; modprobe -r huawei_wmi 2>/dev/null || true; modprobe huawei-wmi || warn "load failed, will load on next boot"; }
+wmi_uninstall()    { dkms_del huawei-wmi-dkms; }
+wmi_status()       { dkms_st huawei-wmi-dkms; }
+hwmon_install()    { dkms_add honor-fmbp-hwmon; install -Dm644 "$FIX/honor-fmbp-hwmon/honor-fmbp-hwmon.conf" /etc/modules-load.d/honor-fmbp-hwmon.conf; modprobe honor-fmbp-hwmon || true; }
+hwmon_uninstall()  { modprobe -r honor-fmbp-hwmon 2>/dev/null || true; dkms_del honor-fmbp-hwmon; rm -f /etc/modules-load.d/honor-fmbp-hwmon.conf; }
+hwmon_status()     { dkms_st honor-fmbp-hwmon; }
+kbdlight_install() { dkms_add honor-fmbp-kbdlight; install -Dm644 "$FIX/honor-fmbp-kbdlight/honor-fmbp-kbdlight.conf" /etc/modules-load.d/honor-fmbp-kbdlight.conf; modprobe honor-fmbp-kbdlight || true; }
+kbdlight_uninstall() { modprobe -r honor-fmbp-kbdlight 2>/dev/null || true; dkms_del honor-fmbp-kbdlight; rm -f /etc/modules-load.d/honor-fmbp-kbdlight.conf; }
+kbdlight_status()  { dkms_st honor-fmbp-kbdlight; }
+
+# ------------------------------------------------------------------ battery
+
+battery_mode() { # EC charge mode via the read-only WMI query \GBCM: 0 = not armed, 1-3 = preset
+    local d=/sys/kernel/debug/huawei-wmi
+    mountpoint -q /sys/kernel/debug || mount -t debugfs none /sys/kernel/debug 2>/dev/null || return 1
+    [[ -w $d/arg ]] || return 1
+    printf 0x1603 > $d/arg
+    cat $d/call 2>/dev/null | tr -d ' \n' | sed -n 's/.*},{0x[0-9a-f]*,0x\([0-9a-f]*\),.*/\1/p'
+}
 battery_install() {
-    log "Installing battery threshold service (70-90 preset, edit the script to taste)"
-    install -Dm755 "$FIX/battery/honor-battery-thresholds.sh" /usr/local/sbin/honor-battery-thresholds.sh
-    install -Dm644 "$FIX/battery/honor-battery-thresholds.service" /etc/systemd/system/honor-battery-thresholds.service
+    log "Installing battery charge-limit service"
+    [[ -f /etc/default/honor-fmbp-battery ]] || install -Dm644 "$FIX/battery/honor-fmbp-battery.default" /etc/default/honor-fmbp-battery
+    install -Dm644 "$FIX/battery/honor-fmbp-battery.service" /etc/systemd/system/honor-fmbp-battery.service
     systemctl daemon-reload
-    systemctl enable --now honor-battery-thresholds.service
+    systemctl enable honor-fmbp-battery.service
+    systemctl restart honor-fmbp-battery.service
     sleep 2
-    case $(battery_armed; echo $?) in
-    0) log "EC armed the limit (preset pair recognized) — enforcement active" ;;
-    1) warn "EC did NOT arm: the configured pair is not a PC Manager preset (only 40/70, 70/90, 95/100 are enforced)" ;;
-    *) : ;; # ec_sys unavailable — can't verify, stay quiet
+    local m; m=$(battery_mode || true)
+    case $m in
+    "")     warn "could not read the EC charge mode (huawei-wmi debugfs missing)" ;;
+    00|0)   warn "EC did NOT arm the limit: only 40 70, 70 90 and 95 100 are enforced (edit /etc/default/honor-fmbp-battery)" ;;
+    *)      log "EC armed the charge limit (mode $m)" ;;
     esac
 }
 battery_uninstall() {
-    systemctl disable --now honor-battery-thresholds.service 2>/dev/null || true
-    rm -f /etc/systemd/system/honor-battery-thresholds.service /usr/local/sbin/honor-battery-thresholds.sh
-    systemctl daemon-reload
+    systemctl disable --now honor-fmbp-battery.service 2>/dev/null || true
+    rm -f /etc/systemd/system/honor-fmbp-battery.service; systemctl daemon-reload
+    [[ -w $THR ]] && echo "0 100" > $THR || true
+    log "charge limit removed (kept /etc/default/honor-fmbp-battery)"
+}
+battery_status() {
+    systemctl is-enabled honor-fmbp-battery.service >/dev/null 2>&1 || { echo "-"; return; }
+    local m=""; [[ $EUID = 0 ]] && m=$(battery_mode || true)
+    echo "enabled, thresholds $(cat $THR 2>/dev/null)${m:+, EC mode $m}"
 }
 
-touchscreen_install() {
-    log "Installing touchscreen power-on workaround"
-    modinfo acpi_call >/dev/null 2>&1 || warn "acpi_call module not found — the workaround will not work until it's installed"
-    echo acpi_call > /etc/modules-load.d/acpi_call.conf
-    install -Dm755 "$FIX/touchscreen/honor-touchscreen-on.sh" /usr/local/sbin/honor-touchscreen-on.sh
-    install -Dm644 "$FIX/touchscreen/honor-touchscreen.service" /etc/systemd/system/honor-touchscreen.service
-    install -Dm755 "$FIX/touchscreen/honor-touchscreen.sleep-hook" /usr/lib/systemd/system-sleep/honor-touchscreen
-    install -Dm644 "$FIX/touchscreen/99-ignore-touchpad-device.rules" /etc/udev/rules.d/99-ignore-touchpad-device.rules
-    udevadm control --reload
-    systemctl daemon-reload
-    systemctl enable --now honor-touchscreen.service || warn "touchscreen service failed (needs acpi_call + the DSDT fix)"
-}
-touchscreen_uninstall() {
-    systemctl disable --now honor-touchscreen.service 2>/dev/null || true
-    rm -f /etc/systemd/system/honor-touchscreen.service /usr/local/sbin/honor-touchscreen-on.sh \
-          /usr/lib/systemd/system-sleep/honor-touchscreen /etc/udev/rules.d/99-ignore-touchpad-device.rules \
-          /etc/modules-load.d/acpi_call.conf
-    udevadm control --reload; systemctl daemon-reload
-}
-
-keyboard_install() {
-    log "Installing keyboard hwdb entry"
-    install -Dm644 "$FIX/fn-keys/61-honor-fmbp-keyboard.hwdb" /etc/udev/hwdb.d/61-honor-fmbp-keyboard.hwdb
-    systemd-hwdb update && udevadm trigger
-}
-keyboard_uninstall() {
-    rm -f /etc/udev/hwdb.d/61-honor-fmbp-keyboard.hwdb
-    systemd-hwdb update && udevadm trigger
-}
-
-# ---------------------------------------------------------------- status
+# ------------------------------------------------------------------ main
 
 status() {
-    local ok='\033[1;32m✔\033[0m' no='\033[1;31m✘\033[0m' dkms_out
-    dkms_out=$(dkms status 2>/dev/null || true)
-    printf "dsdt:        "; [[ -f /etc/acpi-override/acpi-override.cpio ]] && echo -e "$ok override built" || echo -e "$no"
-    printf "driver:      "; grep -q huawei-wmi-fmbp <<<"$dkms_out" && echo -e "$ok $(grep huawei-wmi-fmbp <<<"$dkms_out" | head -1)" || echo -e "$no"
-    printf "fan:         "; grep -q honor-fmbp-hwmon <<<"$dkms_out" && echo -e "$ok" || echo -e "$no"
-    printf "battery:     "
-    if systemctl is-enabled honor-battery-thresholds.service >/dev/null 2>&1; then
-        local armtxt=""
-        case $(battery_armed; echo $?) in
-        0) armtxt="(EC armed)" ;;
-        1) armtxt="(EC NOT armed — pair is not a preset!)" ;;
-        esac
-        echo -e "$ok $(cat /sys/devices/platform/huawei-wmi/charge_control_thresholds 2>/dev/null) $armtxt"
-    else echo -e "$no"; fi
-    printf "touchscreen: "; systemctl is-enabled honor-touchscreen.service >/dev/null 2>&1 && echo -e "$ok" || echo -e "$no"
-    printf "keyboard:    "; [[ -f /etc/udev/hwdb.d/61-honor-fmbp-keyboard.hwdb ]] && echo -e "$ok" || echo -e "$no"
-    if [[ -r /sys/class/power_supply/BAT0/status ]]; then
-        echo "battery now: $(cat /sys/class/power_supply/BAT0/capacity)% $(cat /sys/class/power_supply/BAT0/status)"
-    fi
+    local m
+    for m in $ALL_MODULES; do printf '  %-9s %s\n' "$m" "$("${m}_status")"; done
+    [[ $EUID = 0 ]] || echo "  (run with sudo for the EC charge mode)"
 }
 
-# ---------------------------------------------------------------- main
-
-FORCE=0; YES=0; MODULES=$ALL_MODULES; ACTION=install; SKIP_DEPS=0
+FORCE=0; YES=0; SKIP_DEPS=0; MODULES=$ALL_MODULES; ACTION=install; DSDT_SOURCE=auto
 while [[ $# -gt 0 ]]; do
     case $1 in
-    --status)     ACTION=status ;;
-    --uninstall)  ACTION=uninstall ;;
-    --only)       MODULES=${2//,/ }; shift ;;
-    --force)      FORCE=1 ;;
-    --yes|-y)     YES=1 ;;
-    --skip-deps)  SKIP_DEPS=1 ;;
-    -h|--help)    sed -n '2,20p' "$0"; exit 0 ;;
+    --status)      ACTION=status ;;
+    --uninstall)   ACTION=uninstall ;;
+    --only)        MODULES=${2//,/ }; shift ;;
+    --dsdt-source) DSDT_SOURCE=$2; shift ;;
+    --force)       FORCE=1 ;;
+    --yes|-y)      YES=1 ;;
+    --skip-deps)   SKIP_DEPS=1 ;;
+    -h|--help)     sed -n '5,30p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown option $1 (see --help)" ;;
     esac
     shift
 done
+for m in $MODULES; do [[ " $ALL_MODULES " = *" $m "* ]] || die "unknown module '$m' (valid: $ALL_MODULES)"; done
 
 [[ $ACTION = status ]] && { status; exit 0; }
-[[ $EUID -eq 0 ]] || die "run as root (sudo ./install.sh)"
+[[ $EUID -eq 0 ]] || die "run as root (sudo $0)"
 detect_platform
 
-for m in $MODULES; do
-    [[ " $ALL_MODULES " = *" $m "* ]] || die "unknown module '$m' (valid: $ALL_MODULES)"
-done
-
 if [[ $ACTION = install ]]; then
-    echo "Will install: $MODULES   (distro: $PKG, initramfs: $INITRAMFS)"
-    if [[ $YES -ne 1 ]]; then
-        read -rp "Continue? [y/N] " a; [[ ${a,,} = y* ]] || exit 1
-    fi
+    echo "Will install: $MODULES   (packages: $PKG, initramfs: $INITRAMFS, dsdt source: $DSDT_SOURCE)"
+    if [[ $YES -ne 1 ]]; then read -rp "Continue? [y/N] " a; [[ ${a,,} = y* ]] || exit 1; fi
     [[ $SKIP_DEPS = 1 ]] || install_deps
     for m in $MODULES; do "${m}_install"; done
-    echo
-    log "Done. Reboot to activate the DSDT override (everything else is live)."
-    log "Check with: ./install.sh --status"
+    echo; log "Done. Reboot if the DSDT was installed. Check with: $0 --status"
 else
     echo "Will REMOVE: $MODULES"
-    if [[ $YES -ne 1 ]]; then
-        read -rp "Continue? [y/N] " a; [[ ${a,,} = y* ]] || exit 1
-    fi
+    if [[ $YES -ne 1 ]]; then read -rp "Continue? [y/N] " a; [[ ${a,,} = y* ]] || exit 1; fi
     for m in $MODULES; do "${m}_uninstall"; done
-    log "Uninstalled. Reboot to return to stock ACPI."
+    log "Uninstalled. Reboot to return to the stock firmware tables."
 fi
