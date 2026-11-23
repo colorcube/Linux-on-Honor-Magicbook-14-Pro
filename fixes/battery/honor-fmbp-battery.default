@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth)
+# Install as /etc/default/honor-fmbp-battery
+# Battery charge thresholds for the HONOR MagicBook Pro 14 (FMB-P).
+#
+# The embedded controller only enforces the three OEM preset ranges — arbitrary
+# pairs are silently ignored:
+#
+#   40 70    maximise battery lifespan
+#   70 90    balanced (default)
+#   95 100   maximise capacity
+#
+# Format is "START END". Verified on BIOS 1.13 and 1.16.
+#
+# Apply a change:   sudo systemctl restart honor-fmbp-battery.service
+# Check the result: cat /sys/devices/platform/huawei-wmi/charge_control_thresholds
+#
+# If you use the GNOME "Battery Health Charging" extension, its Quick Settings panel
+# is pre-configured (by honor-fmbp-config) with these same three presets.
+BATTERY_THRESHOLD="70 90"

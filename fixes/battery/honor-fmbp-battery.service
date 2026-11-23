@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth)
+[Unit]
+Description=Restore battery charge thresholds (HONOR FMB-P)
+Documentation=https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/tree/main/fixes/battery
+After=systemd-modules-load.service
+# No-ops cleanly where huawei-wmi does not expose the node.
+ConditionPathExists=/sys/devices/platform/huawei-wmi/charge_control_thresholds
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/honor-fmbp-battery
+# $$ is a literal $ to systemd, so /bin/sh does the expansion and applies the
+# 70 90 default if the conffile is missing or the value commented out. The EC only
+# honours the OEM preset ranges (40 70 / 70 90 / 95 100); other pairs are ignored.
+ExecStart=/bin/sh -c 'echo "$${BATTERY_THRESHOLD:-70 90}" > /sys/devices/platform/huawei-wmi/charge_control_thresholds'
+
+[Install]
+WantedBy=multi-user.target

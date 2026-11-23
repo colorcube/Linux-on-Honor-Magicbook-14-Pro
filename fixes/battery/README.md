@@ -1,46 +1,60 @@
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # Battery charge thresholds
 
-Relates to issues #10 / #17.
+Issues [#10](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/10) and
+[#17](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/17).
 
-## The actual mechanism (second correction, 2026-07-02 — verified on hardware)
+## How it works
 
-Two earlier versions of this page were wrong (first "thresholds just work",
-then "arm SBAD+SBCM"). The real behaviour, established by experiment on
-FMB-P BIOS 1.16:
+The in-tree `huawei-wmi` driver writes the thresholds through the WMI method `\SBTT`
+(EC registers `0x80`/`0x81`). **The EC only enforces a (start, stop) pair if it matches
+one of the Honor PC Manager presets.** On a preset pair the EC arms itself: its charge
+mode, EC `0x85`, becomes the preset index. Any other pair, such as `60 80`, is stored
+but ignored, and the laptop charges to 100 %.
 
-**The EC validates the (start, stop) threshold *pair* against Honor PC
-Manager's presets.** Write a recognized pair into EC regs `0x80`/`0x81`
-(what `huawei-wmi`'s normal `\SBTT` path does) and the EC **arms itself** —
-it sets its internal charge-mode bytes (EC `0x85` = 2, `0x87` = 2) and
-enforces the limit passively. Write anything else (e.g. `60 80`) and the EC
-stores the values but never arms, silently charging to 100%. That is the
-whole mystery behind "thresholds visible but not enforced".
+| start | stop | PC Manager name | EC charge mode |
+|---|---|---|---|
+| 40 | 70 | "70%" (longest battery life) | 1 |
+| 70 | 90 | "90%" (balanced) | 2 |
+| 95 | 100 | "100%" | 3 |
+| 0 | 100 | no limit | 0 |
 
-Recognized pairs (PC Manager presets, from issue #17 and testing):
-
-| start | stop | PC Manager name |
-|-------|------|-----------------|
-| 40 | 70 | "70%" |
-| 70 | 90 | "90%" |
-| 95 | 100 | "100%" |
-| 0 | 100 | no limit (disarm) |
-
-So the fix is simply:
+Verified on **BIOS 1.13** (colorcube, see [docs/testing.md](../../docs/testing.md)) and
+**BIOS 1.16** (tsukasagenesis, yhshzh). On 1.13, `60 80` and `50 80` leave the mode at 0,
+while `70 90` → 2 and `40 70` → 1.
 
 ```sh
 echo "70 90" | sudo tee /sys/devices/platform/huawei-wmi/charge_control_thresholds
 ```
 
-**No driver patch, no WMI arming needed.** Verify the EC armed itself
-(needs `modprobe ec_sys`): EC byte `0x85` must be non-zero —
+No driver patch is needed. KDE's "limit charging" setting and GNOME extensions write to
+the same place, so choose one of the preset values there too.
+
+### Check that the EC armed the limit
+
+This works without `ec_sys`, which Fedora doesn't ship. The query below is a read-only
+WMI call (`\GBCM`). In the second block, byte 1 is the charge mode: anything other
+than 0 means armed.
 
 ```sh
-sudo xxd -s 0x84 -l 4 /sys/kernel/debug/ec/ec0/io   # xx CHMD 48 xx, CHMD != 00
+sudo mount -t debugfs none /sys/kernel/debug 2>/dev/null
+echo 0x1603 | sudo tee /sys/kernel/debug/huawei-wmi/arg >/dev/null
+sudo cat /sys/kernel/debug/huawei-wmi/call
+# [{0x00,...},{0x00,0x02,0x00,0x46,0x5a,...}]  -> mode 2, start 0x46=70, stop 0x5a=90
 ```
 
-Enforcement is robust: confirmed to hold under full CPU+GPU load, and the
-EC actively drains back to the ceiling if the battery is above it when the
-limit is set.
+## Persist across reboots
+
+The EC keeps the pair across reboots. Re-applying it at boot is cheap insurance:
+
+```sh
+sudo install -Dm644 honor-fmbp-battery.default /etc/default/honor-fmbp-battery   # edit BATTERY_THRESHOLD
+sudo install -Dm644 honor-fmbp-battery.service /etc/systemd/system/honor-fmbp-battery.service
+sudo systemctl enable --now honor-fmbp-battery.service
+```
+
+GNOME's "Battery Health Charging" extension can be set to the presets with
+[`gnome-battery-health-charging.dconf`](gnome-battery-health-charging.dconf).
 
 ## Notes from the deep-dive (for the curious)
 
@@ -59,14 +73,16 @@ limit is set.
 - The EC RAM is memory-mapped at `0xFE0B0000` (banks `ECF0`–`ECF9` in the
   DSDT), readable via `/dev/mem` — handy for diffing EC state.
 
-## Persist across reboots
 
-The EC keeps the pair across reboots, but re-applying at boot is free
-insurance. `honor-battery-thresholds.sh` writes the pair (default `70 90`,
-edit to taste — **use a recognized pair**):
+## Credits
 
-```sh
-sudo install -Dm755 honor-battery-thresholds.sh /usr/local/sbin/honor-battery-thresholds.sh
-sudo install -Dm644 honor-battery-thresholds.service /etc/systemd/system/honor-battery-thresholds.service
-sudo systemctl enable honor-battery-thresholds.service
-```
+- **n7n8**: found the PC Manager preset byte pairs in EC `0x80`/`0x81` (#17).
+- **tsukasagenesis**: worked out that only preset pairs arm the EC (#10, PR #21).
+- **yhshzh**: confirmed the mode values on a Chinese unit with BIOS 1.16.
+- **sermart1234**: decoded `\SBCM` ([Huawei-WMI#55](https://github.com/aymanbagabas/Huawei-WMI/issues/55)).
+- **mpi3d**, **larax2do**: smart-charging regression notes (same thread).
+- **nikube**: WMI/PC Manager interface details (#10).
+- **kv9898**: pointed to `matebook-applet` as a GUI.
+- **fan-nature**: the Windows-side limitation with PC Manager (#25).
+- **drphilth**: the service, defaults file and GNOME dconf defaults.
+- **colorcube**: verified the preset behaviour on BIOS 1.13.

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth)
+# Install as /etc/dconf/db/local.d/00-honor-fmbp-battery, then run `dconf update`.
+# System dconf defaults for the maniacx "Battery Health Charging" GNOME extension
+# (Battery-Health-Charging@maniacx.github.com) on the HONOR MagicBook Pro 14 (FMB-P).
+#
+# The extension's stock presets do not match the ranges huawei-wmi actually enforces,
+# so its Quick Settings panel would show/apply the wrong limits. These defaults align
+# all three presets with the OEM ranges the EC honours (the same values the
+# honor-battery-thresholds.service boot default uses — keep them in sync).
+#
+# Defaults only (not locks): the user can still change them. Inert until the extension
+# is installed. Compiled into /etc/dconf/db/local by `dconf update` (run from postinst).
+[org/gnome/shell/extensions/Battery-Health-Charging]
+charging-mode='bal'
+ful-start-threshold=95
+ful-end-threshold=100
+bal-start-threshold=70
+bal-end-threshold=90
+max-start-threshold=40
+max-end-threshold=70
+current-ful-start-threshold=95
+current-ful-end-threshold=100
+current-bal-start-threshold=70
+current-bal-end-threshold=90
+current-max-start-threshold=40
+current-max-end-threshold=70
