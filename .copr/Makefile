@@ -9,16 +9,18 @@
 spec   ?= packaging/fedora/honor-fmbp/honor-fmbp.spec
 outdir ?= $(CURDIR)/.copr/out
 top    := $(shell git rev-parse --show-toplevel 2>/dev/null || pwd)
+# COPR passes an absolute spec path, local calls usually a relative one
+specpath := $(if $(filter /%,$(spec)),$(spec),$(top)/$(spec))
 
 srpm:
 	@if [ "$$(id -u)" = 0 ] && command -v dnf >/dev/null; then dnf -y install git rpm-build >/dev/null; fi
 	git config --global --add safe.directory '*' 2>/dev/null || true
 	set -e; \
-	ver=$$(sed -n 's/^Version:[[:space:]]*//p' "$(top)/$(spec)" | head -1); \
+	ver=$$(sed -n 's/^Version:[[:space:]]*//p' "$(specpath)" | head -1); \
 	tag=$$(git -C "$(top)" describe --exact-match --tags HEAD 2>/dev/null || true); \
 	if [ -n "$$tag" ] && [ "$$tag" != "v$$ver" ]; then echo "tag $$tag does not match spec Version $$ver" >&2; exit 1; fi; \
 	mkdir -p "$(outdir)"; \
 	git -C "$(top)" archive --prefix=Linux-on-Honor-Magicbook-14-Pro-$$ver/ -o "$(outdir)/honor-fmbp-$$ver.tar.gz" HEAD; \
-	rpmbuild -bs --define "_sourcedir $(outdir)" --define "_srcrpmdir $(outdir)" "$(top)/$(spec)"
+	rpmbuild -bs --define "_sourcedir $(outdir)" --define "_srcrpmdir $(outdir)" "$(specpath)"
 
 .PHONY: srpm
