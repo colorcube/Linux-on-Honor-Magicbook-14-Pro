@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.5
+Version:        1.0.6
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -256,6 +256,13 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.6-1
+- kbdlight: report Fn+Space level changes made by the EC to the desktop
+  (brightness_hw_changed), so the OSD and slider follow (#38)
+- DKMS helper: really rebuild modules whose sources changed (dkms build --force;
+  install --force alone reused the old build, so the 1.0.5 keymap fix never became
+  active) and reload modules that are already loaded; rebuilds every module once
+
 * Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.5-1
 - huawei-wmi: ignore the keyboard-backlight notifications 0x2b1-0x2b4 (the EC
   cycles the level itself; as key presses the desktop stepped a second time) and

@@ -28,6 +28,18 @@ silences them.
 Desktops have no default action for `KEY_CAMERA_ACCESS_TOGGLE` (F8), `KEY_PROG1`
 (Fn+P) or `KEY_REFRESH_RATE_TOGGLE` (Fn+R). Bind them yourself if you want an action.
 
+## Keyboard backlight (#38)
+
+The EC handles Fn+Space itself and cycles 0/50/100 %. It reports the new level with the
+WMI events `0x2b1`/`0x2b2`/`0x2b3` (off/50/100). huawei-wmi ignores these (since 1.0.5).
+`honor-fmbp-kbdlight` polls the EC field `KBBL` and reports changes to the desktop
+(since 1.0.6), so the OSD and slider follow. See
+[`fixes/honor-fmbp-kbdlight/`](../../fixes/honor-fmbp-kbdlight/).
+
+**Upstream plan:** handle the FMB-P keyboard backlight in huawei-wmi itself (LED class
+device on `KBBL`, `brightness_hw_changed` on the `0x2b1`–`0x2b3` events). That removes
+the polling and the extra module.
+
 ## Audio (#2)
 
 Up to kernel 6.x some setups needed `snd-intel-dspcfg.dsp_driver=3

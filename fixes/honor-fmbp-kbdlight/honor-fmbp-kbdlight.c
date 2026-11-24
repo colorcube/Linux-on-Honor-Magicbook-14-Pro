@@ -11,6 +11,11 @@
  *   0x01 = latch the current level -> steady (no timeout)
  * We expose a standard "huawei::kbd_backlight" LED (so UPower/GNOME/KDE control
  * it natively) plus a "mode" attribute to pick reactive vs steady.
+ *
+ * Fn+Space is handled by the EC itself (it cycles KBBL off/low/high). To let the
+ * desktop follow, KBBL is polled and hardware-initiated changes are reported via
+ * brightness_hw_changed (LED_BRIGHT_HW_CHANGED). The inactivity timeout does not
+ * change KBBL, and the latch value 0x01 is ignored (colorcube, issue #38).
  */
 #include <linux/module.h>
 #include <linux/init.h>
@@ -27,9 +32,16 @@
 #define KBBL_LATCH  0x01
 #define LATCH_DELAY_MS 1500
 
+static unsigned int poll_ms = 300;
+module_param(poll_ms, uint, 0644);
+MODULE_PARM_DESC(poll_ms, "KBBL poll interval in ms to report Fn+Space changes (0 = off)");
+
 static bool steady;                       /* false = reactive (default) */
 static enum led_brightness cur_bright = 1;/* logical level (KBBL hides it once latched) */
 static struct delayed_work latch_work;
+static struct delayed_work poll_work;
+static DEFINE_MUTEX(kbd_lock);
+static struct led_classdev kbd_led;
 
 static u8 level_to_kbbl(enum led_brightness b)
 {
@@ -58,8 +70,43 @@ static int apply(enum led_brightness b)
 
 static int kbd_set(struct led_classdev *cdev, enum led_brightness b)
 {
+	int ret;
+
+	mutex_lock(&kbd_lock);
 	cur_bright = b;
-	return apply(b);
+	ret = apply(b);
+	mutex_unlock(&kbd_lock);
+	return ret;
+}
+
+/* map a raw KBBL value to a level; -1 for "unknown/latched, keep current" */
+static int kbbl_to_level(u8 v)
+{
+	switch (v) {
+	case KBBL_OFF:  return 0;
+	case KBBL_LOW:  return 1;
+	case KBBL_HIGH: return 2;
+	default:        return -1;
+	}
+}
+
+static void poll_fn(struct work_struct *w)
+{
+	u8 v;
+	int lvl;
+
+	if (!poll_ms)
+		return;
+	mutex_lock(&kbd_lock);
+	if (!ec_read(KBBL_OFFSET, &v)) {
+		lvl = kbbl_to_level(v);
+		if (lvl >= 0 && lvl != cur_bright) {
+			cur_bright = lvl;   /* changed by the EC (Fn+Space) */
+			led_classdev_notify_brightness_hw_changed(&kbd_led, lvl);
+		}
+	}
+	mutex_unlock(&kbd_lock);
+	queue_delayed_work(system_freezable_wq, &poll_work, msecs_to_jiffies(poll_ms));
 }
 
 static enum led_brightness kbd_get(struct led_classdev *cdev)
@@ -81,7 +128,9 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *a,
 		steady = false;
 	else
 		return -EINVAL;
+	mutex_lock(&kbd_lock);
 	apply(cur_bright);          /* re-apply current level in the new mode */
+	mutex_unlock(&kbd_lock);
 	return count;
 }
 static DEVICE_ATTR_RW(mode);
@@ -96,7 +145,7 @@ static struct led_classdev kbd_led = {
 	.brightness_set_blocking = kbd_set,
 	.brightness_get		= kbd_get,
 	.groups			= kbd_groups,
-	.flags			= LED_CORE_SUSPENDRESUME,
+	.flags			= LED_CORE_SUSPENDRESUME | LED_BRIGHT_HW_CHANGED,
 };
 
 static struct platform_device *pdev;
@@ -127,12 +176,16 @@ static int __init kbdlight_init(void)
 		return ret;
 	}
 	apply(cur_bright);   /* sync EC to the reported default so they can't disagree */
+	INIT_DELAYED_WORK(&poll_work, poll_fn);
+	if (poll_ms)
+		queue_delayed_work(system_freezable_wq, &poll_work, msecs_to_jiffies(poll_ms));
 	pr_info("honor-fmbp-kbdlight: registered %s (default: low, reactive)\n", kbd_led.name);
 	return 0;
 }
 
 static void __exit kbdlight_exit(void)
 {
+	cancel_delayed_work_sync(&poll_work);
 	cancel_delayed_work_sync(&latch_work);
 	led_classdev_unregister(&kbd_led);
 	platform_device_unregister(pdev);
