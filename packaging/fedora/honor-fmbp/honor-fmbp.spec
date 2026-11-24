@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.3
+Version:        1.0.4
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -77,6 +77,8 @@ and honor-fmbp-touchscreen-toggle.
 Summary:        Fan RPM hwmon driver for the HONOR MagicBook Pro 14 (FMB-P) (DKMS)
 License:        GPL-2.0-only
 Requires:       dkms
+Requires(post): %{name}-tools = %{version}-%{release}
+Requires(preun): %{name}-tools = %{version}-%{release}
 Requires:       kernel-devel-matched
 
 %description hwmon-dkms
@@ -86,6 +88,8 @@ Exposes the two EC fan tachometers as a hwmon device (sensors).
 Summary:        Keyboard backlight driver for the HONOR MagicBook Pro 14 (FMB-P) (DKMS)
 License:        GPL-2.0-only
 Requires:       dkms
+Requires(post): %{name}-tools = %{version}-%{release}
+Requires(preun): %{name}-tools = %{version}-%{release}
 Requires:       kernel-devel-matched
 
 %description kbdlight-dkms
@@ -95,6 +99,8 @@ Registers the keyboard backlight as LED huawei::kbd_backlight.
 Summary:        huawei-wmi with the HONOR MagicBook Pro 14 (FMB-P) hotkey map (DKMS)
 License:        GPL-2.0-only
 Requires:       dkms
+Requires(post): %{name}-tools = %{version}-%{release}
+Requires(preun): %{name}-tools = %{version}-%{release}
 Requires:       kernel-devel-matched
 
 %description -n huawei-wmi-fmbp-dkms
@@ -131,6 +137,7 @@ echo "enable honor-fmbp-battery.service" > %{buildroot}%{_presetdir}/50-honor-fm
 install -Dm755 tools/honor-fmbp-diag               %{buildroot}%{_bindir}/honor-fmbp-diag
 install -Dm755 tools/honor-fmbp-battery-probe      %{buildroot}%{_sbindir}/honor-fmbp-battery-probe
 install -Dm755 tools/honor-fmbp-touchscreen-toggle %{buildroot}%{_bindir}/honor-fmbp-touchscreen-toggle
+install -Dm755 packaging/fedora/honor-fmbp/honor-fmbp-dkms %{buildroot}%{_libexecdir}/honor-fmbp/honor-fmbp-dkms
 # dkms sources
 for m in honor-fmbp-hwmon:%{hwmon_ver} honor-fmbp-kbdlight:%{kbdlight_ver} huawei-wmi-dkms:%{wmi_ver}; do
     dir=${m%%:*}; ver=${m##*:}
@@ -173,14 +180,11 @@ udevadm control --reload >/dev/null 2>&1 || :
 %postun battery
 %systemd_postun_with_restart honor-fmbp-battery.service
 
-%define dkms_post() \
-dkms add -m %1 -v %2 -q --rpm_safe_upgrade >/dev/null 2>&1 || : \
-dkms install -m %1 -v %2 -q --force || : \
-%{nil}
-# the DKMS version does not change with package updates: only remove on erase
-%define dkms_preun() \
-if [ "$1" -eq 0 ]; then dkms remove -m %1 -v %2 -q --all >/dev/null 2>&1 || :; fi \
-%{nil}
+# honor-fmbp-dkms only rebuilds when the sources changed (Fedora's DKMS regenerates all
+# initramfs images after every install); the DKMS version is stable across updates,
+# so modules are only removed on erase
+%define dkms_post() %{_libexecdir}/honor-fmbp/honor-fmbp-dkms install %1 %2 || :
+%define dkms_preun() if [ "$1" -eq 0 ]; then %{_libexecdir}/honor-fmbp/honor-fmbp-dkms remove %1 %2 || :; fi
 
 %post hwmon-dkms
 %dkms_post honor-fmbp-hwmon %{hwmon_ver}
@@ -234,6 +238,8 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_bindir}/honor-fmbp-diag
 %{_bindir}/honor-fmbp-touchscreen-toggle
 %{_sbindir}/honor-fmbp-battery-probe
+%dir %{_libexecdir}/honor-fmbp
+%{_libexecdir}/honor-fmbp/honor-fmbp-dkms
 
 %files hwmon-dkms
 %license LICENSES/GPL-2.0-only.txt
@@ -250,6 +256,11 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.4-1
+- Faster updates: DKMS modules are only rebuilt when their sources changed, and the
+  initramfs is only regenerated when the selected DSDT changed
+- Long steps (DKMS build, initramfs rebuild) are announced on the terminal
+
 * Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.3-1
 - udev: also map the touchpad ghost device's mic-mute usage (0xff010001) to reserved;
   it got stuck after resume and toggled the microphone (F7 comes via huawei-wmi)

@@ -47,6 +47,10 @@ sudo reboot
 honor-fmbp-diag
 ```
 
+The first installation takes a few minutes: three kernel modules are built with DKMS
+and Fedora rebuilds the initramfs for every installed kernel. Don't abort it. Later
+updates are fast unless a driver or the DSDT changed.
+
 The packages come from the [COPR](https://copr.fedorainfracloud.org/coprs/colorcube/honor-fmbp/)
 (Fedora 44) and include the patched libfprint for the fingerprint reader. Details,
 alternatives (`install.sh`) and uninstall instructions are in

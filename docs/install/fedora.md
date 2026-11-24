@@ -22,6 +22,12 @@ sudo reboot
 honor-fmbp-diag
 ```
 
+**The first installation takes a few minutes. Don't abort it.** DKMS builds three
+kernel modules, and Fedora's DKMS then rebuilds the initramfs of *every* installed kernel
+after each module (about 20-30 s per kernel). The DSDT package rebuilds them once more.
+In a terminal, the packages announce these steps as they happen. Updates skip all of
+this unless a driver's sources or the DSDT actually changed.
+
 The metapackage `honor-magicbook-pro-14` pulls in:
 
 | Package | Content |
