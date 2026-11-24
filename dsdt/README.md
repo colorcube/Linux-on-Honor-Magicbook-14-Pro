@@ -60,6 +60,22 @@ redistributed to owners of this hardware as an interoperability fix.
 | `dsdt.global.aml` | global | ✅ BIOS 1.13, Fedora 44, kernel 7.3.4 (see [docs/testing.md](../docs/testing.md)) |
 | `dsdt.chinese.aml` | Chinese | **untested**, reports welcome |
 
+## How the package picks the variant
+
+`honor-fmbp-dsdt` (Fedora COPR) ships the global and the Chinese table and selects one
+with `honor-fmbp-dsdt-select` (rules by mrueg):
+
+| Live DSDT | Existing selection | Result |
+|---|---|---|
+| firmware's own table | any | detect from its GNVS address (may correct a selection) |
+| firmware table, unknown address | yes / none | keep it / **none**, with a warning |
+| override active (ours, GRUB, denis-bb) | yes / none | keep it / use the variant the override carries |
+| table or DMI unreadable | yes | keep it |
+| DMI shows another machine | any | remove it |
+
+Force a variant with `echo chinese | sudo tee /etc/honor-fmbp/dsdt-force` and run
+`sudo honor-fmbp-dsdt-select`.
+
 ## Installing the override
 
 `tools/install.sh --only dsdt` does this for you. To do it by hand on dracut systems
