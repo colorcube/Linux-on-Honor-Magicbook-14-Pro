@@ -95,11 +95,13 @@ static const struct key_entry huawei_wmi_keymap[] = {
 	{ KE_IGNORE, 0x293, { KEY_KBDILLUMTOGGLE } },
 	{ KE_IGNORE, 0x294, { KEY_KBDILLUMUP } },
 	{ KE_IGNORE, 0x295, { KEY_KBDILLUMUP } },
-	// Keyboard backlight levels (space bar cycle on some models)
-	{ KE_KEY,    0x2b1, { KEY_KBDILLUMDOWN } },
-	{ KE_KEY,    0x2b2, { KEY_KBDILLUMDOWN } },
-	{ KE_KEY,    0x2b3, { KEY_KBDILLUMUP } },
-	{ KE_KEY,    0x2b4, { KEY_KBDILLUMTOGGLE } },
+	// Keyboard backlight level changes (Fn+Space): the EC cycles the level
+	// itself and only reports it, so these must not become key presses
+	// (the desktop would step the backlight a second time)
+	{ KE_IGNORE, 0x2b1, { KEY_KBDILLUMDOWN } },
+	{ KE_IGNORE, 0x2b2, { KEY_KBDILLUMDOWN } },
+	{ KE_IGNORE, 0x2b3, { KEY_KBDILLUMUP } },
+	{ KE_IGNORE, 0x2b4, { KEY_KBDILLUMTOGGLE } },
 	// Power/performance mode switch (Fn+P)
 	{ KE_KEY,    0x2a0, { KEY_PROG1 } },
 	{ KE_KEY,    0x2a1, { KEY_PROG1 } },
@@ -112,6 +114,9 @@ static const struct key_entry huawei_wmi_keymap[] = {
 	// HONOR FMB-P EC notifications (kbd backlight auto on/off), ignore
 	{ KE_IGNORE, 0x2e5, { KEY_RESERVED } },
 	{ KE_IGNORE, 0x2e6, { KEY_RESERVED } },
+	// HONOR FMB-P EC notifications seen once per boot on Fedora 45, ignore
+	{ KE_IGNORE, 0x2e7, { KEY_RESERVED } },
+	{ KE_IGNORE, 0x2e8, { KEY_RESERVED } },
 	// Ignore Ambient Light Sensoring
 	{ KE_KEY,    0x2c1, { KEY_RESERVED } },
 	{ KE_END,	 0 }

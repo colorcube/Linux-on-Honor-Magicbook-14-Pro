@@ -22,9 +22,9 @@ patch huawei-wmi.c < fmbp-keymap.patch
 | `0x288` | camera access toggle (F8) |
 | `0x2a0` / `0x2a1` / `0x2a6` | performance mode (Fn+P): balanced / performance / rejected; see #27 |
 | `0x2a7` | refresh-rate toggle (Fn+R) |
-| `0x2b1`–`0x2b4` | keyboard-backlight levels |
+| `0x2b1`–`0x2b4` | keyboard-backlight level changed (Fn+Space): **ignored**. The EC cycles 0/50/100 % itself, so passing them on as keys made the desktop step a second time (fixed in 1.0.5) |
 | `0x2e0` / `0x2e1` | camera module enable/disable |
-| `0x2e5` / `0x2e6` | EC auto-backlight notifications (ignored) |
+| `0x2e5`–`0x2e8` | EC notifications (ignored) |
 
 `0x28e` → Print is already in mainline, so you don't need a hwdb entry for it.
 

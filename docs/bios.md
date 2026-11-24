@@ -6,7 +6,7 @@
 | 1.13 | 2025-05-08 | Shipping BIOS of many units. DSDT has the NFC0 load bug. Reference for `dsdt/prebuilt/`. |
 | 1.14 | ? | Mentioned in denis-bb#4, not analysed. |
 | 1.16 | 2026-03-25 | Same DSDT bug as 1.13 (tsukasagenesis). Microcode 0x116 → 0x11A, new 16 GB Micron LPDDR5X part, `OneKeyCheck` recovery variable widened to 32 bit and controllable via WMI, new EC commands (dual-battery test mode, sensor id), no more Intel ME update in the package. Package "20260509" is the same 1.16 (domakira). |
-| 1.17 | 2026-10 | "BIOS 20261010 (1.17-2.07)". **Fixes the NFC0 load abort**: the `GNUM` call moved from table-load time into `NFC0._CRS`. That is the only ACPI change. Also a new 8 GB Micron LPDDR5X part and a rebuilt EC firmware. The touchscreen power resource is still missing. Not yet tested on hardware: reports welcome. |
+| 1.17 | 2026-10 | "BIOS 20261010 (1.17-2.07)". **Fixes the NFC0 load abort**: the `GNUM` call moved from table-load time into `NFC0._CRS`. That is the only ACPI change. Also a new 8 GB Micron LPDDR5X part and a rebuilt EC firmware. The touchscreen power resource is still missing. Verified from the firmware capsule, not yet tested on hardware. |
 
 BIOS 1.16/1.17 changes: binary analysis by **mrueg** (#22). Verified independently by
 extracting the DSDT from the official firmware capsules (`FBARL113/116/117.BIN`):
@@ -26,9 +26,9 @@ extracting the DSDT from the official firmware capsules (`FBARL113/116/117.BIN`)
 - `dsdt/build.sh` recognises the fixed NFC0, skips that step and only injects the
   touchscreen power resource. It sets the override's OEM revision to the firmware's
   revision + 1. The kernel ignores an override whose revision isn't higher.
-- The prebuilt tables (from 1.13, OEM revision 3) only work on 1.17 if Honor didn't
-  raise the table's revision to 3 or more. We don't know that yet. If the touchscreen
-  doesn't come back on 1.17, build the table from your own firmware with `dsdt/build.sh`.
+- The prebuilt tables (from 1.13, OEM revision 3) also apply on 1.17, because the
+  firmware still sets OEM revision 2 at boot (see above). Reports from 1.17 owners are
+  welcome.
 
 Downloads: Honor support page for your region (e.g. [MY](https://www.honor.com/my/support/laptop/honor-magicbook-pro-14/)).
 Honor isn't on LVFS, so `fwupd` won't offer updates.
@@ -41,10 +41,7 @@ the difference may come from the memory configuration (RAM size) rather than the
 region. That would explain why a Chinese unit needed the "global" table (#15). Please
 report your variant together with the RAM size (`honor-fmbp-diag` shows both). If your
 addresses match neither variant, the package doesn't select a table. In that case,
-build one from your own firmware with `dsdt/build.sh`. `dsdt/build.sh` and
-`tools/honor-fmbp-diag` detect the SKU from the table. Earlier advice said "Chinese
-units sometimes need the global DSDT" (#15). That came from denis-bb's tables and
-should no longer apply with SKU detection. Please report your results.
+build one from your own firmware with `dsdt/build.sh`.
 
 Fingerprint sensors differ between units, too: see [`fixes/libfprint/`](../fixes/libfprint/).
 
