@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.2
+Version:        1.0.3
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -250,6 +250,10 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.3-1
+- udev: also map the touchpad ghost device's mic-mute usage (0xff010001) to reserved;
+  it got stuck after resume and toggled the microphone (F7 comes via huawei-wmi)
+
 * Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.2-1
 - .copr/Makefile: accept the absolute spec path COPR passes (1.0.1 failed to build)
 
