@@ -18,7 +18,7 @@ away.
 | [@tsukasagenesis](https://github.com/tsukasagenesis) | installer, fan RPM driver, Fn-key map, libfprint fallback, battery preset mechanism, S3 analysis, ACPI notes | PR #21, `install.sh`, `fixes/honor-fmbp-hwmon/`, `fixes/huawei-wmi-dkms/`, `docs/acpi-dsm-notes.md` |
 | [@nikube](https://github.com/nikube) | root cause and hwdb fix for the touchpad ghost brightness keys, libfprint USB-reset finding, status overview | `fixes/udev/61-honor-fmbp-touchpad.hwdb`, #3 #10 #21 |
 | [@codethinki](https://github.com/codethinki) | DSDT-only touchscreen fix, libfprint MR !666 | denis-bb PR #10, `fixes/libfprint/` |
-| [@egormanga](https://github.com/egormanga) | FMB-P key assignments in Huawei-WMI | [Huawei-WMI#93](https://github.com/aymanbagabas/Huawei-WMI/pull/93) |
+| [@egormanga](https://github.com/egormanga) (Egor Vorontsov) | FMB-P key assignments in Huawei-WMI | [Huawei-WMI#93](https://github.com/aymanbagabas/Huawei-WMI/pull/93) |
 | [@colorcube](https://github.com/colorcube) (René Fritz) | maintainer, issues, testing on BIOS 1.13 / Fedora, `f8` scancode, diag tools | everything else |
 
 ## Upstream fixes
