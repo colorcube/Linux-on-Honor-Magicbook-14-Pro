@@ -273,6 +273,8 @@ battery_install() {
     log "Installing battery charge-limit service"
     [[ -f /etc/default/honor-fmbp-battery ]] || install -Dm644 "$FIX/battery/honor-fmbp-battery.default" /etc/default/honor-fmbp-battery
     install -Dm644 "$FIX/battery/honor-fmbp-battery.service" /etc/systemd/system/honor-fmbp-battery.service
+    install -Dm644 "$FIX/battery/99-honor-fmbp-battery.rules" /etc/udev/rules.d/99-honor-fmbp-battery.rules
+    udevadm control --reload
     systemctl daemon-reload
     systemctl enable honor-fmbp-battery.service
     systemctl restart honor-fmbp-battery.service
@@ -286,7 +288,8 @@ battery_install() {
 }
 battery_uninstall() {
     systemctl disable --now honor-fmbp-battery.service 2>/dev/null || true
-    rm -f /etc/systemd/system/honor-fmbp-battery.service; systemctl daemon-reload
+    rm -f /etc/systemd/system/honor-fmbp-battery.service /etc/udev/rules.d/99-honor-fmbp-battery.rules
+    systemctl daemon-reload; udevadm control --reload
     [[ -w $THR ]] && echo "0 100" > $THR || true
     log "charge limit removed (kept /etc/default/honor-fmbp-battery)"
 }

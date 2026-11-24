@@ -51,7 +51,7 @@ away.
 | [@westi77](https://github.com/westi77) (Bulat) | EgisTec `1c7a:05aa` fingerprint guide |
 | [@DoMaLo](https://github.com/DoMaLo) (Dmitriy Gushchin) | EgisTec `1c7a:05aa` fingerprint script |
 | [@feraxhp](https://github.com/feraxhp) | FPC `10a5:a920` fingerprint fork |
-| [@mrueg](https://github.com/mrueg) (Manuel Rüger) | libfprint upstream tracking, BIOS 1.16/1.17 binary analysis (1.17 fixes NFC0) (#22), DSDT variant selection rules (drphilth#7) |
+| [@mrueg](https://github.com/mrueg) (Manuel Rüger) | libfprint upstream tracking, BIOS 1.16/1.17 binary analysis (1.17 fixes NFC0) (#22), DSDT variant selection rules (drphilth#7), udev/battery fixes |
 | [@BargainSir](https://github.com/BargainSir) | factory colour calibration data (#19) |
 | [@domakira](https://github.com/domakira) (Akhil Domichen) | BIOS 1.16 (#18, #22) |
 | [@mikoff](https://github.com/mikoff) | BIOS 20260509 (#22) |

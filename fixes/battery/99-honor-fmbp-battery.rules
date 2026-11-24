@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-FileCopyrightText: 2026 Manuel Rüger (mrueg) — drphilth/honor-magicbook-pro-14-ubuntu, commit 5541a93
+# HONOR MagicBook Pro 14 (FMB-P): apply the battery charge limit once huawei-wmi is ready.
+# honor-fmbp-battery.service is also wanted by multi-user.target, but its
+# ConditionPathExists is evaluated once: if huawei-wmi (loaded by modalias) had not probed
+# yet, the unit was skipped for that boot. "bind" fires after the driver's probe, i.e. once
+# charge_control_thresholds exists ("add" comes before probe). If the unit already ran
+# this boot, this is a no-op.
+ACTION=="bind", SUBSYSTEM=="platform", KERNEL=="huawei-wmi", TAG+="systemd", ENV{SYSTEMD_WANTS}+="honor-fmbp-battery.service"
