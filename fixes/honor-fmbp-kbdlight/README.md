@@ -20,7 +20,14 @@ cycles through the levels. The EC does that itself; since 1.0.6 the driver polls
 | 50 % | `0x2b2` | `0x02` |
 | 100 % | `0x2b3` | `0x03` |
 
-The automatic timeout after inactivity does not change `KBBL`. The `mode` attribute switches between reactive and steady.
+In the default **reactive** mode the EC turns the backlight off after some inactivity
+and back on with the next key press. That doesn't change `KBBL`, so the desktop keeps
+showing the configured level, and Fn+Space continues from there (as on Windows). If you
+don't want the timeout, switch to **steady** mode:
+
+```sh
+echo steady | sudo tee /sys/class/leds/huawei::kbd_backlight/mode
+``` The `mode` attribute switches between reactive and steady.
 
 ```sh
 sudo cp -r . /usr/src/honor-fmbp-kbdlight-1.1

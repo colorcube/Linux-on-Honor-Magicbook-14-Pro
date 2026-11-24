@@ -11,6 +11,10 @@
 # sources changed since the last install (sha256 recorded per module).
 
 STATE=/var/lib/honor-fmbp/dkms
+# v2: 1.0.4/1.0.5 recorded checksums without really rebuilding (dkms install --force
+# reuses an existing build), so their *.sha256 files are ignored and every module is
+# rebuilt once.
+SUMEXT=src2.sha256
 action=$1 name=$2 ver=$3
 [ -n "$name" ] && [ -n "$ver" ] || { echo "usage: $0 install|remove NAME VERSION" >&2; exit 2; }
 src=/usr/src/$name-$ver
@@ -25,7 +29,8 @@ install)
     mkdir -p "$STATE"
     sum=$(find "$src" -type f | LC_ALL=C sort | xargs cat | sha256sum | cut -d' ' -f1)
     kver=$(uname -r)
-    if [ "$(cat "$STATE/$name.sha256" 2>/dev/null)" = "$sum" ] &&
+    rm -f "$STATE/$name.sha256"   # pre-1.0.6 checksum, not trustworthy
+    if [ "$(cat "$STATE/$name.$SUMEXT" 2>/dev/null)" = "$sum" ] &&
        dkms status -m "$name" -v "$ver" -k "$kver" 2>/dev/null | grep -q installed; then
         log "$name/$ver unchanged and installed for $kver — not rebuilt"
         exit 0
@@ -33,8 +38,16 @@ install)
     n=$(ls -d /lib/modules/*/ 2>/dev/null | wc -l)
     tty_note "building kernel module $name (DKMS); Fedora's DKMS then rebuilds the initramfs for $n kernel(s). This can take 1-2 minutes, please wait..."
     dkms add -m "$name" -v "$ver" -q >/dev/null 2>&1 || :
-    if dkms install -m "$name" -v "$ver" -q --force; then
-        echo "$sum" > "$STATE/$name.sha256"
+    # build --force really recompiles; install --force alone reuses an existing build
+    if dkms build -m "$name" -v "$ver" -k "$kver" -q --force &&
+       dkms install -m "$name" -v "$ver" -k "$kver" -q --force; then
+        echo "$sum" > "$STATE/$name.$SUMEXT"
+        # replace an already loaded (old) module
+        mod=$(sed -n 's/^BUILT_MODULE_NAME\[0\]="\(.*\)"/\1/p' "$src/dkms.conf" | tr - _)
+        if [ -n "$mod" ] && grep -q "^$mod " /proc/modules; then
+            modprobe -r "$mod" 2>/dev/null && modprobe "$mod" 2>/dev/null &&
+                log "reloaded $mod" || log "could not reload $mod — it is used after the next reboot"
+        fi
     else
         log "DKMS build of $name/$ver failed — is kernel-devel for $kver installed?"
     fi
@@ -42,7 +55,7 @@ install)
 remove)
     tty_note "removing kernel module $name (DKMS), this can take a minute..."
     dkms remove -m "$name" -v "$ver" -q --all >/dev/null 2>&1 || :
-    rm -f "$STATE/$name.sha256"
+    rm -f "$STATE/$name.sha256" "$STATE/$name.$SUMEXT"
     ;;
 *)
     echo "usage: $0 install|remove NAME VERSION" >&2; exit 2 ;;
