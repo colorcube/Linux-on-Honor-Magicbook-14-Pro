@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.6
+Version:        1.0.7
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -158,8 +158,11 @@ if grep -qsE '^[[:space:]]*acpi[[:space:]]+.*\.aml' /etc/grub.d/40_custom /boot/
 fi
 
 %postun dsdt
-if [ "$1" -eq 0 ] && command -v dracut >/dev/null; then
-    dracut --force --regenerate-all >/dev/null 2>&1 || :
+if [ "$1" -eq 0 ]; then
+    msg="honor-fmbp-dsdt removed: after the next reboot the touchpad, touchscreen and USB-C need the DSDT override again (reinstall honor-fmbp-dsdt)."
+    { printf '\n%s\n' "$msg" > /dev/tty; } 2>/dev/null || :
+    echo "WARNING: $msg" >&2
+    command -v dracut >/dev/null && { dracut --force --regenerate-all >/dev/null 2>&1 || :; }
 fi
 
 %post udev
@@ -256,6 +259,13 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.7-1
+- honor-fmbp-dsdt-select: detect the variant only from the firmware's own DSDT; keep
+  an existing selection while an override is active or detection fails; only drop it
+  when DMI shows other hardware; reject invalid dsdt-force values (rules by mrueg,
+  drphilth/honor-magicbook-pro-14-ubuntu#7)
+- Warn when honor-fmbp-dsdt is removed
+
 * Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.6-1
 - kbdlight: report Fn+Space level changes made by the EC to the desktop
   (brightness_hw_changed), so the OSD and slider follow (#38)

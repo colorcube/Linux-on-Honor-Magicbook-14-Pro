@@ -1,9 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
 # SPDX-FileCopyrightText: 2026 Philip Walsh (drphilth) — https://github.com/drphilth/honor-magicbook-pro-14-ubuntu
+# SPDX-FileCopyrightText: 2026 Manuel Rüger (mrueg) — selection rules, drphilth/honor-magicbook-pro-14-ubuntu#7
 # SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
 #
-# honor-fmbp-dsdt-select — pick the prebuilt DSDT matching this machine's BIOS SKU
+# honor-fmbp-dsdt-select — pick the prebuilt DSDT matching this machine's BIOS variant
 # (global/Chinese) and place it where dracut's acpi_table_dir points
 # (/usr/lib/honor-fmbp/acpi/dsdt.aml). Used by the honor-fmbp-dsdt package.
 #
@@ -12,17 +13,26 @@
 #   honor-fmbp-dsdt-select --no-initramfs
 #   honor-fmbp-dsdt-select --remove   remove the selection (+ rebuild)
 #
-# Detection: GNVS SystemMemory base 0x67E09018 (global) vs 0x67E19018 (Chinese), matched
-# as AML bytes in the live DSDT (same address in stock and corrected tables).
-# Override: put "global" or "chinese" into /etc/honor-fmbp/dsdt-force.
+# The variants differ only in NVS base addresses, which the firmware assigns at boot
+# (GNVS 0x67E09018 "global" vs 0x67E19018 "chinese"). Only the FIRMWARE's own table tells
+# which one this machine needs. While an override is active, /sys shows the override's
+# addresses, i.e. just an earlier choice. Hence (rules by mrueg):
+#   * firmware table live -> detect; authoritative, may correct an existing selection
+#   * override live       -> keep the existing selection; with none, use the variant the
+#                            running override carries and say so
+#   * detection impossible/ambiguous -> never drop or switch an existing selection
+#   * a selection is only removed when DMI positively shows a different machine
+# Force a variant with "global" or "chinese" in /etc/honor-fmbp/dsdt-force.
 set -e
 
 SHARE=/usr/share/honor-fmbp/dsdt
 ACPIDIR=/usr/lib/honor-fmbp/acpi
+SEL=$ACPIDIR/dsdt.aml
 FORCE=/etc/honor-fmbp/dsdt-force
 TABLE=/sys/firmware/acpi/tables/DSDT
 
-log() { echo "honor-fmbp-dsdt: $*" >&2; }
+log()  { echo "honor-fmbp-dsdt: $*" >&2; }
+warn() { log "WARNING: $*"; }
 # Package scriptlet output is only shown after the scriptlet ends, so long steps are
 # also announced directly on the terminal (if there is one).
 tty_note() { { printf '\nhonor-fmbp-dsdt: %s\n' "$*" > /dev/tty; } 2>/dev/null || true; }
@@ -33,17 +43,26 @@ rebuild() {
     n=$(ls -d /lib/modules/*/ 2>/dev/null | wc -l)
     tty_note "rebuilding the initramfs for $n installed kernel(s), this takes about 20-30 s per kernel, please wait..."
     log "rebuilding initramfs images (dracut --regenerate-all)"
-    dracut --force --regenerate-all >/dev/null 2>&1 || log "WARNING: dracut failed — run 'dracut --force --regenerate-all' manually"
+    dracut --force --regenerate-all >/dev/null 2>&1 || warn "dracut failed — run 'dracut --force --regenerate-all' manually"
 }
 
-detect_sku() {
-    [ -r "$TABLE" ] || return 1
-    hex=$(od -An -v -tx1 "$TABLE" | tr -s ' \n' ' ')
-    case "$hex" in
+hexof() { od -An -v -tx1 "$1" 2>/dev/null | tr -s ' \n' ' '; }
+# variant whose GNVS address a table carries
+sku_of() {
+    case "$1" in
         *"0c 18 90 e0 67"*) echo global ;;
         *"0c 18 90 e1 67"*) echo chinese ;;
         *) return 1 ;;
     esac
+}
+# Is the live DSDT an override rather than the firmware's own table?
+#   "TD_P" (54 44 5f 50): our injected touchscreen package; no "NFC0" (4e 46 43 30):
+#   denis-bb's table; or the kernel logged an initrd table upgrade.
+live_is_override() {
+    case "$HEX" in *"54 44 5f 50"*) return 0 ;; esac
+    case "$HEX" in *"4e 46 43 30"*) ;; *) return 0 ;; esac
+    { journalctl -k -b -q 2>/dev/null || dmesg 2>/dev/null; } | grep -q 'Table Upgrade: override \[DSDT' && return 0
+    return 1
 }
 
 NOINIT=0; FORCEINIT=0; MODE=select
@@ -57,33 +76,79 @@ for a in "$@"; do
 done
 
 if [ "$MODE" = remove ]; then
-    rm -f "$ACPIDIR/dsdt.aml"
+    rm -f "$SEL"
     rebuild
     exit 0
 fi
 
-sku=""
-if [ -s "$FORCE" ]; then
-    sku=$(tr -d '[:space:]' < "$FORCE")
-    log "SKU forced to '$sku' via $FORCE"
+HEX=""; [ -r "$TABLE" ] && HEX=$(hexof "$TABLE")
+cur=""; [ -f "$SEL" ] && cur=$(sku_of "$(hexof "$SEL")" || true)
+sku=""; remove=0
+
+if [ -e "$FORCE" ]; then
+    sku=$(tr -d '[:space:]' < "$FORCE" 2>/dev/null || true)
+    case "$sku" in
+        global|chinese) log "variant forced to '$sku' via $FORCE" ;;
+        *) log "ERROR: '$sku' in $FORCE is not 'global' or 'chinese' — nothing changed"; exit 1 ;;
+    esac
 else
     vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
     product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
-    if [ "$vendor" != HONOR ] || [ "$product" != FMB-P ]; then
-        log "not an HONOR FMB-P (DMI: ${vendor:-?}/${product:-?}) — no DSDT override selected"
-        log "(write global|chinese to $FORCE to force one, e.g. for image builds)"
-        rm -f "$ACPIDIR/dsdt.aml"; exit 0
+    if [ -z "$vendor$product" ]; then
+        # no DMI (container, chroot): we know nothing about this machine
+        if [ -n "$cur" ]; then sku=$cur; log "DMI unreadable — keeping the existing $cur selection"
+        else log "DMI unreadable — no DSDT override selected (create $FORCE for image builds)"; fi
+    elif [ "$vendor" != HONOR ] || [ "$product" != FMB-P ]; then
+        remove=1
+        log "not an HONOR FMB-P (DMI: $vendor/$product) — no DSDT override selected"
+    elif [ -z "$HEX" ]; then
+        if [ -n "$cur" ]; then sku=$cur; warn "cannot read $TABLE — keeping the existing $cur selection"
+        else warn "cannot read $TABLE — no DSDT override selected; run honor-fmbp-dsdt-select as root"; fi
+    elif ! live_is_override; then
+        # the firmware's own table: authoritative
+        if sku=$(sku_of "$HEX"); then
+            if [ -n "$cur" ] && [ "$cur" != "$sku" ]; then
+                warn "the firmware DSDT is the $sku variant but $cur was selected — switching to $sku"
+            else
+                log "detected the $sku variant from the firmware DSDT"
+            fi
+        elif [ -n "$cur" ]; then
+            sku=$cur
+            warn "the firmware DSDT matches no known variant (new BIOS or memory layout?) — keeping $cur"
+        else
+            sku=""
+            warn "the firmware DSDT matches no known variant (new BIOS or memory layout?) — NO override selected."
+            warn "Touchpad and touchscreen need one: build a table from your own firmware with"
+            warn "dsdt/build.sh (source repository), or force a variant: echo global | sudo tee $FORCE"
+        fi
+    else
+        # an override is live; its addresses only reflect an earlier choice
+        if [ -n "$cur" ]; then
+            sku=$cur; log "DSDT override active — keeping the existing $cur selection"
+        elif sku=$(sku_of "$HEX"); then
+            warn "a DSDT override is active, so the variant can't be read from the firmware — using the"
+            warn "one the running override carries ($sku). If that is wrong:"
+            warn "  echo chinese | sudo tee $FORCE; sudo honor-fmbp-dsdt-select"
+        else
+            sku=""
+            warn "a DSDT override with unknown addresses is active — NO override selected."
+            warn "Boot once without it and reinstall, or force a variant: echo global | sudo tee $FORCE"
+        fi
     fi
-    sku=$(detect_sku) || { log "unknown BIOS SKU — no override selected. Please report with honor-fmbp-diag."; exit 0; }
 fi
-case "$sku" in global|chinese) ;; *) log "invalid SKU '$sku'"; exit 1 ;; esac
 
-mkdir -p "$ACPIDIR"
-if [ "$FORCEINIT" != 1 ] && cmp -s "$SHARE/dsdt.$sku.aml" "$ACPIDIR/dsdt.aml"; then
-    log "the $sku DSDT is already selected and unchanged — initramfs not rebuilt"
-    exit 0
+if [ -n "$sku" ]; then
+    mkdir -p "$ACPIDIR"
+    if [ "$FORCEINIT" != 1 ] && cmp -s "$SHARE/dsdt.$sku.aml" "$SEL"; then
+        log "the $sku DSDT is already selected and unchanged — initramfs not rebuilt"
+        exit 0
+    fi
+    # a real copy, not a symlink: dracut copies with -d (no-dereference)
+    cp -f "$SHARE/dsdt.$sku.aml" "$SEL"
+    log "selected the $sku DSDT"
+    rebuild
+elif [ "$remove" = 1 ] && [ -e "$SEL" ]; then
+    rm -f "$SEL"
+    rebuild
 fi
-# a real copy, not a symlink: dracut copies with -d (no-dereference)
-cp -f "$SHARE/dsdt.$sku.aml" "$ACPIDIR/dsdt.aml"
-log "selected the $sku DSDT"
-rebuild
+exit 0
