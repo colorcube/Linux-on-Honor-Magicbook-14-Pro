@@ -10,7 +10,8 @@ module drives the EC field `KBBL` (offset `0x41`) directly:
 
 It registers the standard LED `huawei::kbd_backlight`. UPower, GNOME and KDE pick it up
 automatically: in KDE it appears as a slider in the battery & brightness applet. Fn+Space
-cycles through the levels. The `mode` attribute switches between reactive and steady.
+cycles through the levels. That is done by the EC itself, so the desktop slider may not
+follow Fn+Space changes right away. The `mode` attribute switches between reactive and steady.
 
 ```sh
 sudo cp -r . /usr/src/honor-fmbp-kbdlight-1.1
