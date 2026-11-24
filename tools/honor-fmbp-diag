@@ -89,6 +89,7 @@ row "Version / SKU" "$(r /sys/class/dmi/id/product_version) / $(r /sys/class/dmi
 row BIOS "$(r /sys/class/dmi/id/bios_version) ($(r /sys/class/dmi/id/bios_date))"
 row "BIOS SKU (from DSDT)" "$(dsdt_sku)"
 row CPU "$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+row RAM "$(awk '/MemTotal/ {printf "%.0f GiB", $2/1048576}' /proc/meminfo)"
 row Distro "$(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-?}")"
 row Kernel "$(uname -r)"
 row Cmdline "\`$(sed -E 's/(root|rd\.luks\.uuid|resume|cryptdevice)=[^ ]*/\1=…/g' /proc/cmdline)\`"
