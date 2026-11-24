@@ -20,7 +20,7 @@
 #   dsdt.chinese.aml      derived Chinese-SKU table (only when input is global)
 #   fix.patch             source diff stock -> patched (review this!)
 #
-# The input MUST be the unmodified firmware table (OEM revision 0x02). If an override
+# The input MUST be the unmodified firmware table. If an override
 # is already active, /sys shows the overridden table — then pass --table/--dsl, or boot
 # once without the override and rerun.
 set -euo pipefail
@@ -29,7 +29,6 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/out"
 IASL=${IASL:-iasl}
 IN_TABLE="" IN_DSL="" TOUCHSCREEN=1 CHINESE=1
-NEW_REV=0x00000003      # stock is 0x02; kernel only applies an override with a higher rev
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 log() { echo ">> $*"; }
@@ -58,14 +57,19 @@ else
     [ -n "$IN_TABLE" ] || IN_TABLE=/sys/firmware/acpi/tables/DSDT
     [ -r "$IN_TABLE" ] || die "cannot read $IN_TABLE (run with sudo, or pass --table/--dsl)"
     cp "$IN_TABLE" "$WORK/stock.dat"
-    rev=$(od -An -tu4 -j24 -N4 "$WORK/stock.dat" | tr -d ' ')
-    [ "$rev" = 2 ] || die "input DSDT has OEM revision $rev, not the stock 2 — an override is active.
-       Pass the stock table with --table/--dsl, or boot once without the override."
     log "[1] disassemble stock DSDT"
     "$IASL" -d -p "$WORK/stock" "$WORK/stock.dat" >/dev/null 2>&1 || die "iasl -d failed"
 fi
-grep -q 'DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", 0x00000002)' "$WORK/stock.dsl" \
-    || die "input is not a stock FMB-P DSDT (expected HONOR/ARL rev 0x02)"
+# firmware OEM revision (0x02 on BIOS 1.13/1.16); the override must carry a higher one
+REV=$(sed -n 's/^DefinitionBlock ("", "DSDT", 2, "HONOR", "ARL", \(0x[0-9A-Fa-f]*\))$/\1/p' "$WORK/stock.dsl" | head -1)
+[ -n "$REV" ] || die "input is not an FMB-P DSDT (expected OEM HONOR / table ARL)"
+# refuse tables that are already corrected (ours: injected TD_P; denis-bb: NFC0 removed),
+# e.g. /sys/firmware/acpi/tables/DSDT while an override is active
+if grep -q 'Name (TD_P, Package' "$WORK/stock.dsl" || ! grep -q 'Device (NFC0)' "$WORK/stock.dsl"; then
+    die "input is an already patched DSDT (an override is active?).
+       Pass the stock table with --table/--dsl, or boot once without the override."
+fi
+NEW_REV=$(printf '0x%08X' $((REV + 1)))
 
 if   grep -q 'OperationRegion (GNVS, SystemMemory, 0x67E09018' "$WORK/stock.dsl"; then SKU=global
 elif grep -q 'OperationRegion (GNVS, SystemMemory, 0x67E19018' "$WORK/stock.dsl"; then SKU=chinese
@@ -75,18 +79,25 @@ cp "$WORK/stock.dsl" "$WORK/patched.dsl"
 P=$WORK/patched.dsl
 
 # ---------------------------------------------------------------- [2] the fixes
-log "[2] remove NFC0 load-time GNUM call (aborts the whole DSDT load otherwise)"
 n=$(grep -c 'INT1 = GNUM (0x0014080A)' "$P" || true)
-[ "$n" = 1 ] || die "expected exactly one NFC0 GNUM call, found $n — BIOS changed, re-audit"
-sed -i '/INT1 = GNUM (0x0014080A)/d; /CreateWordField (SBGF, 0x17, INT1)/d' "$P"
+case $n in
+1)  log "[2] remove NFC0 load-time GNUM call (aborts the whole DSDT load otherwise)"
+    sed -i '/INT1 = GNUM (0x0014080A)/d; /CreateWordField (SBGF, 0x17, INT1)/d' "$P" ;;
+0)  # BIOS 1.17 moved the GNUM call into NFC0._CRS (analysis by mrueg, issue #22)
+    grep -q 'GNUM (0x0014080A)' "$P" \
+        || die "NFC0 GNUM call not found at all — unknown BIOS, please report with tools/honor-fmbp-diag"
+    log "[2] NFC0 is already fixed in this BIOS (GNUM no longer runs at table load) — skipping" ;;
+*)  die "expected one NFC0 GNUM call, found $n — BIOS changed, re-audit" ;;
+esac
 
 if [ "$TOUCHSCREEN" = 1 ]; then
     log "[2b] inject touchscreen PowerResource (FTSC1000 on I2C2)"
     python3 -I "$HERE/patches/inject-touchscreen-power.py" "$P"
 fi
 
-log "[3] bump OEM revision 0x02 -> $NEW_REV"
-sed -i "s/\(\"ARL\", \)0x00000002/\1$NEW_REV/" "$P"
+log "[3] bump OEM revision $REV -> $NEW_REV"
+sed -i "s/^\(DefinitionBlock (\"\", \"DSDT\", 2, \"HONOR\", \"ARL\", \)$REV)/\1$NEW_REV)/" "$P"
+grep -q "\"ARL\", $NEW_REV)" "$P" || die "OEM revision bump failed"
 
 log "[4] drop references a standalone DSDT can't resolve (dead code, not behavioural)"
 sed -i '/External (.*EFUN\.CRFI/d' "$P"
