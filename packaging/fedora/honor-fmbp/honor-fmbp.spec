@@ -8,7 +8,7 @@
 %global wmi_ver      7.3.1
 
 Name:           honor-fmbp
-Version:        1.0.7
+Version:        1.0.8
 Release:        1%{?dist}
 Summary:        Linux support for the HONOR MagicBook Pro 14 2025 (FMB-P)
 License:        GPL-2.0-or-later AND GPL-2.0-only AND CC-BY-4.0 AND LicenseRef-OEM-firmware-derived
@@ -131,6 +131,7 @@ install -Dm644 fixes/udev/99-honor-fmbp-touchscreen-toggle.rules %{buildroot}%{_
 # battery
 install -Dm644 fixes/battery/honor-fmbp-battery.service %{buildroot}%{_unitdir}/honor-fmbp-battery.service
 install -Dm644 fixes/battery/honor-fmbp-battery.default %{buildroot}%{_sysconfdir}/default/honor-fmbp-battery
+install -Dm644 fixes/battery/99-honor-fmbp-battery.rules %{buildroot}%{_udevrulesdir}/99-honor-fmbp-battery.rules
 install -d %{buildroot}%{_presetdir}
 echo "enable honor-fmbp-battery.service" > %{buildroot}%{_presetdir}/50-honor-fmbp-battery.preset
 # tools
@@ -233,6 +234,7 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %license LICENSES/GPL-2.0-only.txt
 %doc fixes/battery/README.md
 %{_unitdir}/honor-fmbp-battery.service
+%{_udevrulesdir}/99-honor-fmbp-battery.rules
 %{_presetdir}/50-honor-fmbp-battery.preset
 %config(noreplace) %{_sysconfdir}/default/honor-fmbp-battery
 
@@ -259,6 +261,13 @@ modprobe honor-fmbp-kbdlight >/dev/null 2>&1 || :
 %{_usrsrc}/huawei-wmi-fmbp-%{wmi_ver}/
 
 %changelog
+* Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.8-1
+- udev: run the touchscreen rules on the eventN node only (no more errors in the
+  journal on every add/remove)
+- battery: also start the charge-limit service when huawei-wmi binds, in case the
+  driver probes after the service was evaluated
+  (both fixes by mrueg, drphilth/honor-magicbook-pro-14-ubuntu)
+
 * Tue Nov 24 2026 René Fritz <13253123+colorcube@users.noreply.github.com> - 1.0.7-1
 - honor-fmbp-dsdt-select: detect the variant only from the firmware's own DSDT; keep
   an existing selection while an override is active or detection fails; only drop it

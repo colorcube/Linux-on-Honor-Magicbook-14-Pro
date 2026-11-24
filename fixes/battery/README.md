@@ -51,7 +51,11 @@ The EC keeps the pair across reboots. Re-applying it at boot is cheap insurance:
 sudo install -Dm644 honor-fmbp-battery.default /etc/default/honor-fmbp-battery   # edit BATTERY_THRESHOLD
 sudo install -Dm644 honor-fmbp-battery.service /etc/systemd/system/honor-fmbp-battery.service
 sudo systemctl enable --now honor-fmbp-battery.service
+sudo install -Dm644 99-honor-fmbp-battery.rules /etc/udev/rules.d/99-honor-fmbp-battery.rules
 ```
+
+The udev rule starts the service again when huawei-wmi binds, in case the driver
+probes after the service ran at boot (fix by mrueg).
 
 GNOME's "Battery Health Charging" extension can be set to the presets with
 [`gnome-battery-health-charging.dconf`](gnome-battery-health-charging.dconf).

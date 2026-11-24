@@ -7,4 +7,5 @@
 # honor-fmbp-touchscreen-toggle can flip it without root. sysfs attrs can't take
 # systemd's uaccess ACLs (those are devnode-only), so group+g+w is the packaged
 # mechanism; users not in `input` fall back to the script's pkexec path.
-SUBSYSTEM=="input", ATTRS{name}=="FTSC1000:00 2808:5662", RUN+="/bin/sh -c 'chgrp input /sys$env{DEVPATH}/../inhibited && chmod g+w /sys$env{DEVPATH}/../inhibited'"
+# eventN only (see 99-honor-fmbp-touchscreen.rules): $DEVPATH/../inhibited is the inputN attr.
+SUBSYSTEM=="input", KERNEL=="event*", ACTION!="remove", ATTRS{name}=="FTSC1000:00 2808:5662", RUN+="/bin/sh -c 'chgrp input /sys$env{DEVPATH}/../inhibited && chmod g+w /sys$env{DEVPATH}/../inhibited'"

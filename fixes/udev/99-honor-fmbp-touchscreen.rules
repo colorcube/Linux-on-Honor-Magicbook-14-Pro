@@ -6,4 +6,6 @@
 # confusing Fn+F7. Inhibiting it leaves only the real multitouch device in use.
 # (Touchscreen *power* comes from the DSDT PowerResource fix, not this rule.)
 # Source: colorcube/Linux-on-Honor-Magicbook-14-Pro #20 / stretch/touchscreen.md
-SUBSYSTEM=="input", ATTRS{name}=="FTSC1000:00 2808:5662 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"
+# Only the eventN node: ATTRS{} also matches its inputN parent, where ../inhibited
+# does not exist, and remove events have nothing left to inhibit (fix by mrueg).
+SUBSYSTEM=="input", KERNEL=="event*", ACTION!="remove", ATTRS{name}=="FTSC1000:00 2808:5662 UNKNOWN", RUN+="/bin/sh -c 'echo 1 > /sys$env{DEVPATH}/../inhibited'"

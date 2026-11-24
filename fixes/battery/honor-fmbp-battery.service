@@ -4,7 +4,8 @@
 Description=Restore battery charge thresholds (HONOR FMB-P)
 Documentation=https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/tree/main/fixes/battery
 After=systemd-modules-load.service
-# No-ops cleanly where huawei-wmi does not expose the node.
+# No-ops cleanly where huawei-wmi does not expose the node. If huawei-wmi probes after
+# this unit was evaluated, 99-honor-fmbp-battery.rules starts it on the driver's bind event.
 ConditionPathExists=/sys/devices/platform/huawei-wmi/charge_control_thresholds
 
 [Service]
