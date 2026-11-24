@@ -76,7 +76,13 @@ secure_boot_on() {
     [[ -n $v && $(od -An -tu1 -j4 -N1 "$v" | tr -d ' ') = 1 ]]
 }
 
-dsdt_rev()  { od -An -tu4 -j24 -N4 /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -d ' '; }
+# is the DSDT in /sys already an override (initrd table upgrade or GRUB 'acpi')?
+dsdt_overridden() {
+    local klog; klog=$(journalctl -k -b -q 2>/dev/null || dmesg 2>/dev/null || true)
+    grep -q 'Table Upgrade: override \[DSDT' <<<"$klog" && return 0
+    od -An -c /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -d ' \n' | grep -q 'TD_P' && return 0   # our table
+    ! od -An -c /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -d ' \n' | grep -q 'NFC0'               # denis-bb table
+}
 dsdt_sku()  {
     local hex; hex=$(od -An -v -tx1 /sys/firmware/acpi/tables/DSDT 2>/dev/null | tr -s ' \n' ' ')
     if   grep -q '0c 18 90 e0 67' <<<"$hex"; then echo global
@@ -146,16 +152,16 @@ update_grub() {
 
 dsdt_install() {
     secure_boot_on && die "Secure Boot is on: kernel lockdown may ignore ACPI table overrides. Disable it first (see dsdt/README.md)."
-    local sku rev src=$DSDT_SOURCE out
-    sku=$(dsdt_sku); rev=$(dsdt_rev)
+    local sku src=$DSDT_SOURCE out
+    sku=$(dsdt_sku)
     [[ $sku != unknown ]] || die "unknown BIOS SKU — please report with tools/honor-fmbp-diag"
     if [[ $src = auto ]]; then
-        [[ $rev = 2 ]] && src=own || src=prebuilt
+        dsdt_overridden && src=prebuilt || src=own
     fi
     install -d "$LIB/acpi" "$STATE"
     case $src in
     own)
-        [[ $rev = 2 ]] || die "the firmware table in /sys is already overridden (OEM rev $rev); use --dsdt-source prebuilt"
+        dsdt_overridden && die "the DSDT in /sys is already an override; use --dsdt-source prebuilt (or boot once without it)"
         log "Building the DSDT from this machine's firmware ($sku)"
         out=$(mktemp -d)
         "$REPO/dsdt/build.sh" --out "$out" --no-chinese

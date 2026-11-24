@@ -36,6 +36,10 @@ dsdt/build.sh --dsl   /path/to/stock.dsl     # e.g. denis-bb's original/dsdt.glo
 On BIOS 1.13 global, the table built from the firmware is identical to drphilth's
 hardware-tested table (verified 2026-11-23, see [docs/testing.md](../docs/testing.md)).
 
+**BIOS 1.17** fixes the NFC0 load abort (#22). `build.sh` detects this and then only
+injects the touchscreen power resource. It always sets the OEM revision to the
+firmware's revision + 1.
+
 The script detects the BIOS SKU (global/Chinese) from the GNVS address. It aborts if a
 future BIOS changes the patched code. When the input is global, it also derives the
 Chinese table. That table is byte-identical to one built straight from denis-bb's

@@ -7,7 +7,8 @@
 # (global/Chinese) and place it where dracut's acpi_table_dir points
 # (/usr/lib/honor-fmbp/acpi/dsdt.aml). Used by the honor-fmbp-dsdt package.
 #
-#   honor-fmbp-dsdt-select            select + rebuild initramfs
+#   honor-fmbp-dsdt-select            select; rebuild initramfs only if the selection changed
+#   honor-fmbp-dsdt-select --force-initramfs   always rebuild
 #   honor-fmbp-dsdt-select --no-initramfs
 #   honor-fmbp-dsdt-select --remove   remove the selection (+ rebuild)
 #
@@ -22,10 +23,15 @@ FORCE=/etc/honor-fmbp/dsdt-force
 TABLE=/sys/firmware/acpi/tables/DSDT
 
 log() { echo "honor-fmbp-dsdt: $*" >&2; }
+# Package scriptlet output is only shown after the scriptlet ends, so long steps are
+# also announced directly on the terminal (if there is one).
+tty_note() { { printf '\nhonor-fmbp-dsdt: %s\n' "$*" > /dev/tty; } 2>/dev/null || true; }
 
 rebuild() {
     [ "$NOINIT" = 1 ] && return 0
     command -v dracut >/dev/null 2>&1 || { log "dracut not found — rebuild your initramfs yourself"; return 0; }
+    n=$(ls -d /lib/modules/*/ 2>/dev/null | wc -l)
+    tty_note "rebuilding the initramfs for $n installed kernel(s), this takes about 20-30 s per kernel, please wait..."
     log "rebuilding initramfs images (dracut --regenerate-all)"
     dracut --force --regenerate-all >/dev/null 2>&1 || log "WARNING: dracut failed — run 'dracut --force --regenerate-all' manually"
 }
@@ -40,10 +46,11 @@ detect_sku() {
     esac
 }
 
-NOINIT=0; MODE=select
+NOINIT=0; FORCEINIT=0; MODE=select
 for a in "$@"; do
     case "$a" in
         --no-initramfs) NOINIT=1 ;;
+        --force-initramfs) FORCEINIT=1 ;;
         --remove) MODE=remove ;;
         *) log "unknown option $a"; exit 2 ;;
     esac
@@ -72,6 +79,10 @@ fi
 case "$sku" in global|chinese) ;; *) log "invalid SKU '$sku'"; exit 1 ;; esac
 
 mkdir -p "$ACPIDIR"
+if [ "$FORCEINIT" != 1 ] && cmp -s "$SHARE/dsdt.$sku.aml" "$ACPIDIR/dsdt.aml"; then
+    log "the $sku DSDT is already selected and unchanged — initramfs not rebuilt"
+    exit 0
+fi
 # a real copy, not a symlink: dracut copies with -d (no-dereference)
 cp -f "$SHARE/dsdt.$sku.aml" "$ACPIDIR/dsdt.aml"
 log "selected the $sku DSDT"

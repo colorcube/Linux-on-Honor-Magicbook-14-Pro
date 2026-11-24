@@ -1,0 +1,50 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors
+#
+# honor-fmbp-dkms install|remove <dkms-name> <dkms-version>
+# Called from the %post/%preun scriptlets of the honor-fmbp *-dkms packages.
+#
+# Fedora's DKMS rebuilds ALL initramfs images after every module install
+# (post_transaction in /etc/dkms/framework.conf), which takes minutes. So we only
+# (re)install when the module isn't built for the running kernel yet or when its
+# sources changed since the last install (sha256 recorded per module).
+
+STATE=/var/lib/honor-fmbp/dkms
+action=$1 name=$2 ver=$3
+[ -n "$name" ] && [ -n "$ver" ] || { echo "usage: $0 install|remove NAME VERSION" >&2; exit 2; }
+src=/usr/src/$name-$ver
+
+log() { echo "honor-fmbp: $*" >&2; }
+# scriptlet output only appears after the scriptlet ends; announce long steps on the tty
+tty_note() { { printf '\nhonor-fmbp: %s\n' "$*" > /dev/tty; } 2>/dev/null || true; }
+
+case $action in
+install)
+    [ -d "$src" ] || { log "$src missing"; exit 0; }
+    mkdir -p "$STATE"
+    sum=$(find "$src" -type f | LC_ALL=C sort | xargs cat | sha256sum | cut -d' ' -f1)
+    kver=$(uname -r)
+    if [ "$(cat "$STATE/$name.sha256" 2>/dev/null)" = "$sum" ] &&
+       dkms status -m "$name" -v "$ver" -k "$kver" 2>/dev/null | grep -q installed; then
+        log "$name/$ver unchanged and installed for $kver — not rebuilt"
+        exit 0
+    fi
+    n=$(ls -d /lib/modules/*/ 2>/dev/null | wc -l)
+    tty_note "building kernel module $name (DKMS); Fedora's DKMS then rebuilds the initramfs for $n kernel(s). This can take 1-2 minutes, please wait..."
+    dkms add -m "$name" -v "$ver" -q >/dev/null 2>&1 || :
+    if dkms install -m "$name" -v "$ver" -q --force; then
+        echo "$sum" > "$STATE/$name.sha256"
+    else
+        log "DKMS build of $name/$ver failed — is kernel-devel for $kver installed?"
+    fi
+    ;;
+remove)
+    tty_note "removing kernel module $name (DKMS), this can take a minute..."
+    dkms remove -m "$name" -v "$ver" -q --all >/dev/null 2>&1 || :
+    rm -f "$STATE/$name.sha256"
+    ;;
+*)
+    echo "usage: $0 install|remove NAME VERSION" >&2; exit 2 ;;
+esac
+exit 0

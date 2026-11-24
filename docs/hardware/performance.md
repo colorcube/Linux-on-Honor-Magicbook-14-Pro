@@ -27,7 +27,20 @@ needs three layers working together:
 The balanced profile of `power-profiles-daemon` uses EPP 128, which held the 225H to
 about 25 W. Honor uses EPP 64 for AC balanced.
 
-**Status:** research only, there is no packaged fix yet. The plan is to bring
+**Interim workaround:** yhshzh's [honor-fmbp-perf](https://github.com/yhshzh/honor-fmbp-perf)
+is a small daemon and CLI (Python, systemd, GPL-2.0-or-later, gated to the FMB-P). It
+works together with `thermald --adaptive` and does the following:
+- mode switching via `\GTUB`/`\STUB` (huawei-wmi debugfs)
+- PL2 from the DataVault, matched to the CPU SKU
+- `imok` keep-alive, only while thermald runs, so the EC failsafe still works
+- EPP 64 on AC balanced
+- notifications on Fn+P
+
+It was tested on a Chinese unit (BIOS 1.16, Core Ultra 5 225H). It also works with
+`fixes/huawei-wmi-dkms` installed. Only the instant "mode rejected" (`0x2a6`) notice
+needs the stock driver.
+
+**Status:** The plan is to bring
 `platform_profile` (smart/performance through `\STUB`) into `huawei-wmi` and the
 `imok`/PL2 handling into thermald. Help is welcome.
 

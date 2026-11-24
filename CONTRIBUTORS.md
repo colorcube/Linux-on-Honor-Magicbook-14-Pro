@@ -41,7 +41,7 @@ away.
 | [@Terrydaktal](https://github.com/Terrydaktal) | first working libfprint patch for `10a5:9924` |
 | [@Atom-Py](https://github.com/Atom-Py) (Vladislav) | power-button EC/FADT analysis (#8) |
 | [@n7n8](https://github.com/n7n8) | EC charge-threshold preset bytes (#17) |
-| [@yhshzh](https://github.com/yhshzh) | battery mode verification (Chinese, BIOS 1.16), performance mode / DPTF / 50 W clamp analysis (#10, #27) |
+| [@yhshzh](https://github.com/yhshzh) | battery mode verification (Chinese, BIOS 1.16), performance mode / DPTF / 50 W clamp analysis, [honor-fmbp-perf](https://github.com/yhshzh/honor-fmbp-perf) daemon (#10, #27) |
 | [@sujoshua](https://github.com/sujoshua) (joshua) | touchpad BetterLife/Goodix hypothesis (#3) |
 | [@Osama-A-Abbas](https://github.com/Osama-A-Abbas) (Osama Abbas) | GNOME-layer brightness analysis (#3) |
 | jean bzh (Fedora forum) | found the touchpad ghost device and wrote the first udev rule |
@@ -51,7 +51,7 @@ away.
 | [@westi77](https://github.com/westi77) (Bulat) | EgisTec `1c7a:05aa` fingerprint guide |
 | [@DoMaLo](https://github.com/DoMaLo) (Dmitriy Gushchin) | EgisTec `1c7a:05aa` fingerprint script |
 | [@feraxhp](https://github.com/feraxhp) | FPC `10a5:a920` fingerprint fork |
-| [@mrueg](https://github.com/mrueg) (Manuel Rüger) | libfprint upstream tracking, BIOS 1.17 report |
+| [@mrueg](https://github.com/mrueg) (Manuel Rüger) | libfprint upstream tracking, BIOS 1.16/1.17 binary analysis (1.17 fixes NFC0) (#22) |
 | [@BargainSir](https://github.com/BargainSir) | factory colour calibration data (#19) |
 | [@domakira](https://github.com/domakira) (Akhil Domichen) | BIOS 1.16 (#18, #22) |
 | [@mikoff](https://github.com/mikoff) | BIOS 20260509 (#22) |
