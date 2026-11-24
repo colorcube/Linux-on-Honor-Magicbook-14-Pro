@@ -7,9 +7,13 @@
 # them into a third input device "GXT7863:00 27C6:01E0 UNKNOWN", which emits a
 # KEY_BRIGHTNESSUP/DOWN press without a release. The kernel then autorepeats it at
 # ~30 Hz and the screen jumps between dark and full brightness.
-# Mapping the two vendor usages to "reserved" stops the ghost key inside the kernel, for
-# every desktop. 0xff010001 (micmute) is deliberately left alone.
+# Mapping the vendor usages to "reserved" stops the ghost keys inside the kernel, for
+# every desktop. 0xff010001 (micmute) has the same stuck-press bug: after resume it can
+# toggle the microphone at autorepeat rate until another key is pressed. The real
+# mic-mute key (F7) arrives via huawei-wmi, so this usage is not needed (colorcube,
+# verified on BIOS 1.13 with libinput debug-events).
 # Earlier analysis: jean bzh (Fedora forum), sujoshua, Osama-A-Abbas.
 evdev:input:b0018v27C6p01E0*
  KEYBOARD_KEY_ff010003=reserved
  KEYBOARD_KEY_ff010004=reserved
+ KEYBOARD_KEY_ff010001=reserved

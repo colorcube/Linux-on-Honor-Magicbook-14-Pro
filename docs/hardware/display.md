@@ -9,8 +9,10 @@ device, `GXT7863:00 27C6:01E0 UNKNOWN`. That device sends a `KEY_BRIGHTNESSUP`/`
 press but never the release, so kernel autorepeat fires it at about 30 Hz.
 
 **Fix:** [`fixes/udev/61-honor-fmbp-touchpad.hwdb`](../../fixes/udev/61-honor-fmbp-touchpad.hwdb)
-maps the two vendor usages `0xff010003`/`0xff010004` to `reserved` inside the kernel.
-This works for every desktop, and mic-mute (`0xff010001`) keeps working.
+maps the vendor usages `0xff010003`/`0xff010004` to `reserved` inside the kernel. This
+works for every desktop. The ghost device also has a mic-mute usage (`0xff010001`) with
+the same bug: after resume it made KDE's mic OSD flicker. Since 1.0.3 it is mapped to
+`reserved` too, because F7 arrives via huawei-wmi.
 
 Older workarounds, kept for reference:
 - Inhibit the whole device with a udev rule
