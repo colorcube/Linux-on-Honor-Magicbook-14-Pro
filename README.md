@@ -31,7 +31,7 @@ Tested on BIOS 1.13 (global), Fedora 44, kernel 7.3. Details:
 | Wi-Fi, Bluetooth, audio, webcam, lid, suspend (s2idle) | ✅ | ✅ | [docs/hardware/](docs/hardware/) |
 | Power button | ✅ hold ~0.5 s | ✅ | [power button](docs/hardware/power-button.md) |
 | HDR in GNOME/KDE | ❌ | EDID override (optional) | [display](docs/hardware/display.md) |
-| Performance mode (Fn+P, 50 W clamp) | ❌ | research | [performance](docs/hardware/performance.md) |
+| Performance mode (Fn+P, 50 W clamp) | ❌ capped at 50 W | ✅ optional package `honor-fmbp-perf` (80–115 W) | [performance](docs/hardware/performance.md) |
 | S3 deep sleep | ❌ hardware is S0ix-only | hibernate works | [sleep](docs/hardware/sleep.md) |
 | Wi-Fi fails after warm reboot | open (#26) | — | [wifi](docs/hardware/wifi.md) |
 | IR camera / face unlock | — no IR camera in the 2025 model | — | |

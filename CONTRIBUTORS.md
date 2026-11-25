@@ -26,6 +26,7 @@ away.
 | Who | What |
 |---|---|
 | [@Cryolitia](https://github.com/Cryolitia) (deepin / AOSC OS) | atkbd keyboard quirk (6.19) and ACPICA NULL-deref fix (6.19 / 6.18.3), #1 #11 |
+| Fuwei Xie | huawei-wmi `platform_profile` series for `\GTUB`/`\STUB` (RFC v2, platform-driver-x86) |
 | Zeno-sole (lichenggang, UnionTech) | libfprint MR !611, FPC `10a5:9924` id |
 | [@aymanbagabas](https://github.com/aymanbagabas) (Ayman Bagabas) | the `huawei-wmi` driver |
 | sermart1234, mpi3d, larax2do | `\SBCM` decode and smart-charging notes in [Huawei-WMI#55](https://github.com/aymanbagabas/Huawei-WMI/issues/55) |
