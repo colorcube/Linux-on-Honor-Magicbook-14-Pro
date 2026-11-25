@@ -40,9 +40,27 @@ It was tested on a Chinese unit (BIOS 1.16, Core Ultra 5 225H). It also works wi
 `fixes/huawei-wmi-dkms` installed. Only the instant "mode rejected" (`0x2a6`) notice
 needs the stock driver.
 
-**Status:** The plan is to bring
-`platform_profile` (smart/performance through `\STUB`) into `huawei-wmi` and the
-`imok`/PL2 handling into thermald. Help is welcome.
+**Fedora package:** `sudo dnf install honor-fmbp-perf` from the
+[COPR](https://copr.fedorainfracloud.org/coprs/colorcube/honor-fmbp/). It is optional
+and not part of `honor-magicbook-pro-14`. The service starts after installation, or
+right away with `sudo systemctl start honor-perf`. Use `honor-perf status|high|balanced`
+or Fn+P. On Fedora, `powerprofilesctl` doesn't exist (tuned-ppd), so the profile sync
+is skipped; that's harmless.
 
-Credit: **yhshzh** (full analysis, measurements), **tsukasagenesis**
+Measured on a global FMB-P (Core Ultra 9 285H, BIOS 1.13, Fedora 45), full load on AC:
+
+| Setup | Package power | PL1 / PL2 |
+|---|---|---|
+| without the daemon | 50.1 W (EC clamp) | 65 / 50 W |
+| daemon, Smart Mode | 80.0 W | 65 / 80 W |
+| daemon, High Performance | 92.7 W | 75 / 115 W |
+
+**Upstream:**
+- **Kernel:** Fuwei Xie's RFC v2 series adds `platform_profile` (`\GTUB`/`\STUB`, events
+  `0x2a0`/`0x2a1`/`0x2a6`) to huawei-wmi
+  ([cover letter](https://lore.kernel.org/r/69C3BBDEF214121E+20261118161311.17252-1-12313607@mail.sustech.edu.cn)).
+  It is under review by Ilpo Järvinen, and yhshzh tested it on an FMB-P.
+- **thermald:** `imok` and the PL2 AP Policy remain open. Help is welcome.
+
+Credit: **yhshzh** (full analysis, measurements, honor-fmbp-perf), **Fuwei Xie** (kernel series), **tsukasagenesis**
 (power-profiles-daemon notes).
