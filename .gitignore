@@ -7,3 +7,10 @@ msdm.*
 dsdt/out/
 dsdt/original/
 .copr/out/
+
+# Arch packaging artifacts
+packaging/arch/*/src/
+packaging/arch/*/pkg/
+packaging/arch/*/*.pkg.tar.*
+packaging/arch/*/.PKGINFO
+packaging/arch/out/

@@ -1,0 +1,16 @@
+pkgbase = honor-fmbp-edid
+	pkgdesc = Patched EDID for HDR on the HONOR MagicBook Pro 14 (FMB-P) internal panel
+	pkgver = 1.0.9
+	pkgrel = 1
+	url = https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro
+	install = honor-fmbp-edid.install
+	arch = any
+	license = LicenseRef-OEM-firmware-derived
+	license = CC-BY-4.0
+	license = GPL-2.0-or-later
+	optdepends = grub: automatically configure the EDID override for standard GRUB setups
+	optdepends = mkinitcpio: include the EDID in the initramfs
+	source = https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/releases/download/v1.0.9/honor-fmbp-1.0.9-arch.tar
+	b2sums = 0cbb384e1de85ee6fcd65ef7fd485979c893d0b05d089f9cab2b16ecfe84b66a5286111734f55c2e96bf973587109d689806b7193ce742cf9aad8f43d4479c81
+
+pkgname = honor-fmbp-edid

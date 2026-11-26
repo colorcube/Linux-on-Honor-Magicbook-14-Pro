@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# SPDX-FileCopyrightText: 2026 the Linux-on-Honor-Magicbook-14-Pro contributors
+#
+# libfprint with support for the HONOR MagicBook Pro 14 (FMB-P) fingerprint
+# sensor 10a5:9924 (upstream MR !666).
+# Arch packaging baseline: https://gitlab.archlinux.org/archlinux/packaging/packages/libfprint
+# https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro
+
+pkgname=honor-fmbp-libfprint
+pkgver=1.94.100
+pkgrel=1
+pkgdesc="libfprint with support for the HONOR MagicBook Pro 14 (FMB-P) FPC 10a5:9924 fingerprint sensor"
+arch=('x86_64')
+license=('LGPL-2.1-or-later')
+url="https://fprint.freedesktop.org/"
+provides=("libfprint=$pkgver" 'libfprint-2.so')
+conflicts=('libfprint')
+depends=(
+  libgcc
+  glib2
+  glibc
+  libgudev
+  libgusb
+  openssl
+  pixman
+)
+makedepends=(
+  git
+  glib2-devel
+  gobject-introspection
+  gtk-doc
+  meson
+  python-cairo
+  python-gobject
+  systemd
+)
+checkdepends=(
+  cairo
+  umockdev
+)
+_honorver=1.0.9
+source=("git+https://gitlab.freedesktop.org/libfprint/libfprint.git?signed#tag=v$pkgver"
+        "fpcmoc-10a5-9924-$_honorver.patch::https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/releases/download/v$_honorver/fpcmoc-10a5-9924-$_honorver.patch")
+b2sums=('56cbe62a6d4b98d1de90f45bae8de605418802d1b4d8d5dc55a8557a65045b115df51daf8385decdebd8aea79c86103467d5a327cbd461030d450f0e15466d08'
+        '7f7fda0eef2d481043855d307ef232fd621ac9c6a8686940a4cbb5b1ab927fe1b015a0593a41460cfa32cc7636dcdf2fcd05853b5f0ab696e712305eac66dd99')
+validpgpkeys=(
+  D4C501DA48EB797A081750939449C2F50996635F # Marco Trevisan (Treviño) <mail@3v1n0.net>
+)
+
+prepare() {
+  local patch_file="$srcdir/fpcmoc-10a5-9924-$_honorver.patch"
+  cd "$srcdir/libfprint"
+
+  # MR !666 skips the USB reset specifically for this sensor.
+  if grep -Fq 'g_usb_device_get_pid (fpi_device_get_usb_device (device)) != 0x9924 &&' \
+      libfprint/drivers/fpcmoc/fpc.c; then
+    printf '%s\n' \
+      "WARNING: libfprint v$pkgver already contains the 10a5:9924 reset workaround; skipping the patch." \
+      'Update your checkout or PKGBUILD to the latest revision. If it is already current,' \
+      'please remind the maintainers at https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues' >&2
+    return 0
+  fi
+
+  git apply "$patch_file"
+}
+
+build() {
+  local meson_options=(
+    # Add virtual drivers for integration tests (e.g. in fprintd).
+    -D drivers=all
+    -D installed-tests=false
+  )
+
+  arch-meson libfprint build "${meson_options[@]}"
+  meson compile -C build
+}
+
+check() {
+  meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}

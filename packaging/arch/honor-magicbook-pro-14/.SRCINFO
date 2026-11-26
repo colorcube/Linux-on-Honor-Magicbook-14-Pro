@@ -1,0 +1,26 @@
+pkgbase = honor-magicbook-pro-14
+	pkgdesc = Support for the HONOR MagicBook Pro 14 2025 (FMB-P): corrected DSDT, udev quirks, DKMS drivers and a charge-limit service
+	pkgver = 1.0.9
+	pkgrel = 1
+	url = https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro
+	install = honor-magicbook-pro-14.install
+	arch = x86_64
+	license = GPL-2.0-or-later
+	license = GPL-2.0-only
+	license = CC-BY-4.0
+	license = LicenseRef-OEM-firmware-derived
+	depends = bash
+	depends = coreutils
+	depends = dkms
+	depends = systemd
+	optdepends = mkinitcpio: automatically include the selected DSDT in boot images
+	optdepends = acpica: build a DSDT from the original firmware table
+	optdepends = perl: build a DSDT from the original firmware table
+	optdepends = python: build a DSDT from the original firmware table
+	optdepends = honor-fmbp-edid: HDR on the internal panel (patched EDID)
+	optdepends = honor-fmbp-libfprint: fingerprint reader 10a5:9924 (replaces the Arch libfprint)
+	backup = etc/default/honor-fmbp-battery
+	source = https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/releases/download/v1.0.9/honor-fmbp-1.0.9-arch.tar
+	b2sums = 0cbb384e1de85ee6fcd65ef7fd485979c893d0b05d089f9cab2b16ecfe84b66a5286111734f55c2e96bf973587109d689806b7193ce742cf9aad8f43d4479c81
+
+pkgname = honor-magicbook-pro-14

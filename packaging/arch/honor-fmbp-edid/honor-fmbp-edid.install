@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 the Linux-on-Honor-Magicbook-14-Pro contributors
+
+_refresh_grub() {
+    # Only regenerate an existing configuration at Arch's standard GRUB path.
+    if [ -f /boot/grub/grub.cfg ] && command -v grub-mkconfig >/dev/null; then
+        if grub-mkconfig -o /boot/grub/grub.cfg; then
+            printf '%s\n' 'HDR: Reboot after the pacman transaction and initramfs rebuild finish successfully.'
+        else
+            printf '%s\n' 'WARNING: HDR: GRUB regeneration failed; rerun grub-mkconfig before rebooting.' >&2
+        fi
+    else
+        printf '%s\n' 'HDR: Standard GRUB setup not found. See the EDID guide for manual boot configuration.'
+    fi
+}
+
+post_install() { _refresh_grub; }
+post_upgrade() { _refresh_grub; }
+# At this point pacman has removed the package's GRUB drop-in.
+post_remove() { _refresh_grub; }
