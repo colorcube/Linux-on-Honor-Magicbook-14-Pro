@@ -180,26 +180,32 @@ dsdt_install() {
     dracut)
         install -Dm644 "$REPO/dsdt/initramfs/dracut-10-honor-fmbp-dsdt.conf" /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf ;;
     mkinitcpio)
-        local w; w=$(mktemp -d); install -d "$w/kernel/firmware/acpi"
-        cp "$LIB/acpi/dsdt.aml" "$w/kernel/firmware/acpi/"
-        ( cd "$w" && find kernel | LC_ALL=C sort | cpio -o -H newc -R 0:0 --quiet ) > "$LIB/acpi-override.cpio"
-        rm -rf "$w"
-        install -Dm755 "$REPO/dsdt/initramfs/mkinitcpio-10-acpi-override" /etc/initcpio/post/10-acpi-override ;;
+        install -Dm644 "$LIB/acpi/dsdt.aml" /etc/initcpio/acpi_override/honor-fmbp.aml
+        warn "Add acpi_override to HOOKS in /etc/mkinitcpio.conf, then rebuild the images you boot." ;;
     initramfs-tools)
         install -Dm755 "$REPO/dsdt/initramfs/initramfs-tools-honor-fmbp-dsdt" /etc/initramfs-tools/hooks/honor-fmbp-dsdt ;;
     esac
-    log "Regenerating initramfs"
-    regen_initramfs
+    if [[ "$INITRAMFS" == mkinitcpio ]]; then
+        log "DSDT staged ($sku, $src); follow the mkinitcpio instructions above before rebooting."
+    else
+        log "Regenerating initramfs"
+        regen_initramfs
+        log "DSDT installed ($sku, $src) — active after reboot. Check: journalctl -k -b | grep 'Table Upgrade'"
+    fi
     update_grub
-    log "DSDT installed ($sku, $src) — active after reboot. Check: journalctl -k -b | grep 'Table Upgrade'"
     log "Rescue: boot an entry whose initramfs predates this (e.g. Fedora's '0-rescue' entry) or run --uninstall."
 }
 
 dsdt_uninstall() {
-    rm -f /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf /etc/initcpio/post/10-acpi-override \
-          /etc/initramfs-tools/hooks/honor-fmbp-dsdt "$LIB/acpi-override.cpio" "$STATE/dsdt.info"
+    rm -f /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf \
+          /etc/initcpio/acpi_override/honor-fmbp.aml \
+          /etc/initramfs-tools/hooks/honor-fmbp-dsdt "$STATE/dsdt.info"
     rm -rf "$LIB/acpi"
-    regen_initramfs
+    if [[ "$INITRAMFS" == mkinitcpio ]]; then
+        warn "Remove acpi_override from the presets that no longer need it, then rebuild their images."
+    else
+        regen_initramfs
+    fi
     log "DSDT override removed (GRUB lines disabled by the installer stay disabled; backups in $BACKUP)"
 }
 

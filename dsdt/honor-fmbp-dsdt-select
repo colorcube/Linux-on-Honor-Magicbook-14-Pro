@@ -10,6 +10,7 @@
 #
 #   honor-fmbp-dsdt-select            select; rebuild initramfs only if the selection changed
 #   honor-fmbp-dsdt-select --force-initramfs   always rebuild
+#   honor-fmbp-dsdt-select --mkinitcpio   select Arch's managed table without rebuilding
 #   honor-fmbp-dsdt-select --no-initramfs
 #   honor-fmbp-dsdt-select --remove   remove the selection (+ rebuild)
 #
@@ -59,27 +60,35 @@ sku_of() {
 #   "TD_P" (54 44 5f 50): our injected touchscreen package; no "NFC0" (4e 46 43 30):
 #   denis-bb's table; or the kernel logged an initrd table upgrade.
 live_is_override() {
-    case "$HEX" in *"54 44 5f 50"*) return 0 ;; esac
-    case "$HEX" in *"4e 46 43 30"*) ;; *) return 0 ;; esac
+    case "$1" in *"54 44 5f 50"*) return 0 ;; esac
+    case "$1" in *"4e 46 43 30"*) ;; *) return 0 ;; esac
     { journalctl -k -b -q 2>/dev/null || dmesg 2>/dev/null; } | grep -q 'Table Upgrade: override \[DSDT' && return 0
     return 1
 }
 
-NOINIT=0; FORCEINIT=0; MODE=select
+read_dmi() { cat "/sys/class/dmi/id/$1" 2>/dev/null || true; }
+
+NOINIT=0
+FORCEINIT=0
+MODE=select
 for a in "$@"; do
     case "$a" in
+        --mkinitcpio) ACPIDIR=/usr/lib/initcpio/acpi_override; SEL=$ACPIDIR/dsdt-prebuilt.aml; NOINIT=1 ;;
         --no-initramfs) NOINIT=1 ;;
         --force-initramfs) FORCEINIT=1 ;;
-        --remove) MODE=remove ;;
+        --remove)
+            [ "$MODE" = select ] || { warn "conflicting mode: $a"; exit 2; }
+            MODE=$a ;;
         *) log "unknown option $a"; exit 2 ;;
     esac
 done
 
-if [ "$MODE" = remove ]; then
-    rm -f "$SEL"
-    rebuild
-    exit 0
-fi
+case "$MODE" in
+    --remove)
+        rm -f "$SEL"
+        rebuild
+        exit 0 ;;
+esac
 
 HEX=""; [ -r "$TABLE" ] && HEX=$(hexof "$TABLE")
 cur=""; [ -f "$SEL" ] && cur=$(sku_of "$(hexof "$SEL")" || true)
@@ -92,9 +101,9 @@ if [ -e "$FORCE" ]; then
         *) log "ERROR: '$sku' in $FORCE is not 'global' or 'chinese' — nothing changed"; exit 1 ;;
     esac
 else
-    vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
-    product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
-    if [ -z "$vendor$product" ]; then
+    vendor=$(read_dmi sys_vendor)
+    product=$(read_dmi product_name)
+    if [ -z "$vendor" ] || [ -z "$product" ]; then
         # no DMI (container, chroot): we know nothing about this machine
         if [ -n "$cur" ]; then sku=$cur; log "DMI unreadable — keeping the existing $cur selection"
         else log "DMI unreadable — no DSDT override selected (create $FORCE for image builds)"; fi
@@ -104,7 +113,7 @@ else
     elif [ -z "$HEX" ]; then
         if [ -n "$cur" ]; then sku=$cur; warn "cannot read $TABLE — keeping the existing $cur selection"
         else warn "cannot read $TABLE — no DSDT override selected; run honor-fmbp-dsdt-select as root"; fi
-    elif ! live_is_override; then
+    elif ! live_is_override "$HEX"; then
         # the firmware's own table: authoritative
         if sku=$(sku_of "$HEX"); then
             if [ -n "$cur" ] && [ "$cur" != "$sku" ]; then
@@ -144,7 +153,7 @@ if [ -n "$sku" ]; then
         exit 0
     fi
     # a real copy, not a symlink: dracut copies with -d (no-dereference)
-    cp -f "$SHARE/dsdt.$sku.aml" "$SEL"
+    cp --remove-destination "$SHARE/dsdt.$sku.aml" "$SEL"
     log "selected the $sku DSDT"
     rebuild
 elif [ "$remove" = 1 ] && [ -e "$SEL" ]; then
