@@ -31,12 +31,21 @@ listener service as a workaround. On KDE the keys work.
 
 ## HDR (#16)
 
-The OLED panel advertises HDR only in its DisplayID block, which GNOME 49 and KDE don't
-read. denis-bb built a patched EDID (`edp-hdr.bin`, attached to #16). Load it like this:
+The OLED panel advertises HDR only in its DisplayID 2.0 block. The kernel reads
+the CTA-861 HDR static metadata block (extended tag `0x06`) and nothing else
+(`drivers/gpu/drm/drm_edid.c`), so the connector's `HDR_OUTPUT_METADATA` stays
+empty and the compositor sees no HDR. Compositors that parse EDID via
+`libdisplay-info` (such as GNOME's mutter and Hyprland's Aquamarine) also only
+look at the CTA-861 block, so they see nothing either. KDE's KWin works around
+it by synthesising the metadata from the base EDID's chromaticities plus the
+DisplayID declaration — that's why Plasma shows an HDR switch while the others
+don't.
 
-1. Copy `edp-hdr.bin` to `/lib/firmware/edid/` and include it in the initramfs. On
-   Fedora, add `install_items+=" /lib/firmware/edid/edp-hdr.bin "` to a dracut conf.
-2. Add `drm.edid_firmware=eDP-1:edid/edp-hdr.bin` to the kernel command line.
+The patched EDID from denis-bb
+([issue #16](https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/16),
+[`fixes/edid/edp-hdr.bin`](../../fixes/edid/)) repeats the HDR information in a CTA-861
+extension block. See [fixes/edid/README.md](../../fixes/edid/README.md) for setup
+instructions.
 
 Use it with care: the EDID detailed timing can't describe the native modes exactly.
 Credit: **denis-bb**.

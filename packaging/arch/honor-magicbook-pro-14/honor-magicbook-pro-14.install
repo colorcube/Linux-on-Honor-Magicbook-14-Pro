@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 the Linux-on-Honor-Magicbook-14-Pro contributors
+
+_select_prebuilt_dsdt() {
+    # The mkinitcpio pacman hook rebuilds images after package scriptlets finish.
+    if [ -e /etc/initcpio/acpi_override/honor-fmbp.aml ]; then
+        /usr/bin/rm -f /usr/lib/initcpio/acpi_override/dsdt-prebuilt.aml
+        return
+    fi
+    /usr/bin/honor-fmbp-dsdt-select --mkinitcpio ||
+        printf '%s\n' 'HONOR FMB-P: DSDT selection failed; see the Arch install guide.' >&2
+}
+
+post_install() {
+    _select_prebuilt_dsdt
+    printf '%s\n' \
+        'DSDT verification, manual builds and rollback: https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/blob/main/docs/install/arch.md#dsdt-overrides-and-local-builds' \
+        'Optional charge limits: https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/blob/main/fixes/battery/README.md'
+}
+
+post_upgrade() {
+    _select_prebuilt_dsdt
+}
+
+pre_remove() {
+    if command -v systemctl >/dev/null 2>&1; then
+        systemctl disable honor-fmbp-battery.service >/dev/null 2>&1 || true
+        if [ -d /run/systemd/system ]; then
+            systemctl stop honor-fmbp-battery.service >/dev/null 2>&1 || true
+        fi
+    fi
+    printf '%s\n' \
+        'Battery: The controller remembers charge limits after uninstall and reboot.' \
+        'To restore unrestricted charging, explicitly reset the thresholds to 0 100:' \
+        "  echo '0 100' | sudo tee /sys/devices/platform/huawei-wmi/charge_control_thresholds"
+}
+
+post_remove() {
+    # Keep the user's manually built table; only remove the staged prebuilt copy.
+    /usr/bin/rm -f /usr/lib/initcpio/acpi_override/dsdt-prebuilt.aml
+}

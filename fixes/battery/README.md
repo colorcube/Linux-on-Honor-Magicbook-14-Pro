@@ -60,6 +60,20 @@ probes after the service ran at boot (fix by mrueg).
 GNOME's "Battery Health Charging" extension can be set to the presets with
 [`gnome-battery-health-charging.dconf`](gnome-battery-health-charging.dconf).
 
+## Disable the charge limit
+
+Stopping or uninstalling the service leaves the current thresholds in the EC.
+To return to unrestricted charging, disable the service (if still installed),
+then explicitly clear the limit:
+
+```sh
+sudo systemctl disable --now honor-fmbp-battery.service
+echo "0 100" | sudo tee /sys/devices/platform/huawei-wmi/charge_control_thresholds
+```
+
+If KDE or a GNOME extension also manages charging, turn off its limit there
+so it does not reapply the old thresholds.
+
 ## Notes from the deep-dive (for the curious)
 
 - `\SBCM` (WMI `0x1503`) sets mode + thresholds in one call. Payload bytes

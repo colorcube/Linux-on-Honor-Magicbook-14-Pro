@@ -27,6 +27,8 @@ needed.
 **Fedora:** build the RPM from [`../../packaging/fedora/libfprint/`](../../packaging/fedora/libfprint/).
 Later it will also come from the COPR.
 
+**Arch:** see [docs/install/arch.md](../../docs/install/arch.md#fingerprint).
+
 ```sh
 git clone https://gitlab.freedesktop.org/libfprint/libfprint && cd libfprint
 git checkout v1.94.100 && patch -p1 < fpcmoc-10a5-9924.patch

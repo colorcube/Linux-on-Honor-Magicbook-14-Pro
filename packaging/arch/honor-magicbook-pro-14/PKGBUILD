@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 the Linux-on-Honor-Magicbook-14-Pro contributors
+#
+# Everything the HONOR MagicBook Pro 14 2025 (FMB-P) needs under Linux:
+# corrected DSDT, udev quirks, Fn-key/fan/keyboard-backlight drivers and a
+# charge-limit service.
+# https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro
+
+pkgname=honor-magicbook-pro-14
+pkgver=1.0.9
+pkgrel=1
+pkgdesc="Support for the HONOR MagicBook Pro 14 2025 (FMB-P): corrected DSDT, udev quirks, DKMS drivers and a charge-limit service"
+arch=('x86_64')
+license=('GPL-2.0-or-later' 'GPL-2.0-only' 'CC-BY-4.0' 'LicenseRef-OEM-firmware-derived')
+url="https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro"
+depends=('bash' 'coreutils' 'dkms' 'systemd')
+optdepends=('mkinitcpio: automatically include the selected DSDT in boot images'
+            'acpica: build a DSDT from the original firmware table'
+            'perl: build a DSDT from the original firmware table'
+            'python: build a DSDT from the original firmware table'
+            'honor-fmbp-edid: HDR on the internal panel (patched EDID)'
+            'honor-fmbp-libfprint: fingerprint reader 10a5:9924 (replaces the Arch libfprint)')
+backup=('etc/default/honor-fmbp-battery')
+install=$pkgname.install
+
+source=("$url/releases/download/v$pkgver/honor-fmbp-$pkgver-arch.tar")
+b2sums=('0cbb384e1de85ee6fcd65ef7fd485979c893d0b05d089f9cab2b16ecfe84b66a5286111734f55c2e96bf973587109d689806b7193ce742cf9aad8f43d4479c81')
+
+_package_dsdt() {
+    # Ship both DSDT variants; the install script selects the matching one.
+    install -Dm644 "dsdt/prebuilt/dsdt.global.aml" "$pkgdir/usr/share/honor-fmbp/dsdt/dsdt.global.aml"
+    install -Dm644 "dsdt/prebuilt/dsdt.chinese.aml" "$pkgdir/usr/share/honor-fmbp/dsdt/dsdt.chinese.aml"
+    # Reference only: shows the changes in the prebuilt global DSDT.
+    install -Dm644 "dsdt/prebuilt/fix.global.patch" "$pkgdir/usr/share/honor-fmbp/dsdt/fix.global.patch"
+    install -Dm755 "dsdt/honor-fmbp-dsdt-select" "$pkgdir/usr/bin/honor-fmbp-dsdt-select"
+
+    install -Dm644 dsdt/initramfs/mkinitcpio-honor-fmbp.conf "$pkgdir/etc/mkinitcpio.conf.d/50-honor-fmbp.conf"
+    install -Dm755 dsdt/build.sh "$pkgdir/usr/share/honor-fmbp/dsdt/build.sh"
+    install -Dm644 dsdt/patches/inject-touchscreen-power.py "$pkgdir/usr/share/honor-fmbp/dsdt/patches/inject-touchscreen-power.py"
+    install -Dm644 docs/install/arch.md "$pkgdir/usr/share/doc/$pkgname/arch.md"
+    install -Dm644 LICENSES/LicenseRef-OEM-firmware-derived.txt "$pkgdir/usr/share/licenses/$pkgname/LicenseRef-OEM-firmware-derived.txt"
+}
+
+
+_install_dkms_module() {
+    local source=$1 name version destination
+    name=$(sed -n 's/^PACKAGE_NAME="\(.*\)"$/\1/p' "$source/dkms.conf")
+    version=$(sed -n 's/^PACKAGE_VERSION="\(.*\)"$/\1/p' "$source/dkms.conf")
+    if [[ ! $name =~ ^[a-zA-Z0-9_][a-zA-Z0-9_-]*$ || ! $version =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.+-]*$ ]]; then
+        printf 'Invalid or duplicate DKMS name/version in %s\n' "$source/dkms.conf" >&2
+        return 1
+    fi
+
+    destination="$pkgdir/usr/src/$name-$version"
+    install -d "$destination"
+    install -m644 "$source"/*.c "$source/Makefile" "$source/dkms.conf" "$destination/"
+}
+
+package() {
+    cd "$srcdir/honor-fmbp-$pkgver"
+
+    _package_dsdt
+
+    # udev and hwdb
+    install -Dm644 "fixes/udev/61-honor-fmbp-keyboard.hwdb" "$pkgdir/usr/lib/udev/hwdb.d/61-honor-fmbp-keyboard.hwdb"
+    install -Dm644 "fixes/udev/61-honor-fmbp-touchpad.hwdb" "$pkgdir/usr/lib/udev/hwdb.d/61-honor-fmbp-touchpad.hwdb"
+    install -Dm644 "fixes/udev/99-honor-fmbp-touchscreen.rules" "$pkgdir/usr/lib/udev/rules.d/99-honor-fmbp-touchscreen.rules"
+    install -Dm644 "fixes/udev/99-honor-fmbp-touchscreen-toggle.rules" "$pkgdir/usr/lib/udev/rules.d/99-honor-fmbp-touchscreen-toggle.rules"
+
+    # battery
+    install -Dm644 "fixes/battery/honor-fmbp-battery.service" "$pkgdir/usr/lib/systemd/system/honor-fmbp-battery.service"
+    install -Dm644 "fixes/battery/honor-fmbp-battery.default" "$pkgdir/etc/default/honor-fmbp-battery"
+    # Catch late driver binding only after the administrator enables the unit.
+    sed 's|^ACTION==|TEST=="/etc/systemd/system/multi-user.target.wants/honor-fmbp-battery.service", ACTION==|' \
+        fixes/battery/99-honor-fmbp-battery.rules > "$pkgdir/usr/lib/udev/rules.d/99-honor-fmbp-battery.rules"
+
+    # tools
+    install -Dm755 "tools/honor-fmbp-diag" "$pkgdir/usr/bin/honor-fmbp-diag"
+    install -Dm755 "tools/honor-fmbp-touchscreen-toggle" "$pkgdir/usr/bin/honor-fmbp-touchscreen-toggle"
+    install -Dm755 "tools/honor-fmbp-battery-probe" "$pkgdir/usr/bin/honor-fmbp-battery-probe"
+
+    # kernel modules
+    local module
+    for module in honor-fmbp-hwmon honor-fmbp-kbdlight huawei-wmi-dkms; do
+        _install_dkms_module "fixes/$module" || return 1
+    done
+    install -Dm644 "fixes/honor-fmbp-hwmon/honor-fmbp-hwmon.conf" "$pkgdir/usr/lib/modules-load.d/honor-fmbp-hwmon.conf"
+    install -Dm644 "fixes/honor-fmbp-kbdlight/honor-fmbp-kbdlight.conf" "$pkgdir/usr/lib/modules-load.d/honor-fmbp-kbdlight.conf"
+}

@@ -1,7 +1,7 @@
 version = 1
 
 [[annotations]]
-path = ["fixes/**", "install.sh", "dsdt/initramfs/**", ".gitignore", "REUSE.toml"]
+path = ["fixes/**", "install.sh", "dsdt/initramfs/**", ".gitignore", "REUSE.toml", "packaging/arch/**/*.install", "packaging/arch/**/PKGBUILD", "packaging/arch/**/.SRCINFO", "packaging/arch/install.sh"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2025-2026 René Fritz and the Linux-on-Honor-Magicbook-14-Pro contributors (see CONTRIBUTORS.md)"
 SPDX-License-Identifier = "GPL-2.0-or-later"
@@ -12,9 +12,9 @@ SPDX-FileCopyrightText = "2025-2026 René Fritz and the Linux-on-Honor-Magicbook
 SPDX-License-Identifier = "CC-BY-4.0"
 
 [[annotations]]
-path = ["dsdt/prebuilt/*.aml", "dsdt/prebuilt/*.patch"]
+path = ["dsdt/prebuilt/*.aml", "dsdt/prebuilt/*.patch", "fixes/edid/edp-hdr.bin"]
 precedence = "override"
-SPDX-FileCopyrightText = ["HONOR Device Co., Ltd. (original firmware DSDT)", "2025-2026 denis-bb, Philip Walsh (drphilth) and contributors (fixes)"]
+SPDX-FileCopyrightText = ["HONOR Device Co., Ltd. (original firmware DSDT and EDID)", "2025-2026 denis-bb, Philip Walsh (drphilth) and contributors (fixes)"]
 SPDX-License-Identifier = "LicenseRef-OEM-firmware-derived"
 
 [[annotations]]

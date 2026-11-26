@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# SPDX-FileCopyrightText: 2026 the Linux-on-Honor-Magicbook-14-Pro contributors
+
+pkgname=honor-fmbp-edid
+pkgver=1.0.9
+pkgrel=1
+pkgdesc='Patched EDID for HDR on the HONOR MagicBook Pro 14 (FMB-P) internal panel'
+arch=('any')
+url='https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro'
+license=('LicenseRef-OEM-firmware-derived' 'CC-BY-4.0' 'GPL-2.0-or-later')
+optdepends=('grub: automatically configure the EDID override for standard GRUB setups'
+            'mkinitcpio: include the EDID in the initramfs')
+install=$pkgname.install
+source=("$url/releases/download/v$pkgver/honor-fmbp-$pkgver-arch.tar")
+b2sums=('0cbb384e1de85ee6fcd65ef7fd485979c893d0b05d089f9cab2b16ecfe84b66a5286111734f55c2e96bf973587109d689806b7193ce742cf9aad8f43d4479c81')
+
+package() {
+    cd "$srcdir/honor-fmbp-$pkgver"
+
+    install -Dm644 fixes/edid/edp-hdr.bin "$pkgdir/usr/lib/firmware/edid/honor-fmbp/edp-hdr.bin"
+    install -Dm644 fixes/edid/mkinitcpio-honor-fmbp-edid.conf "$pkgdir/etc/mkinitcpio.conf.d/50-honor-fmbp-edid.conf"
+    install -Dm644 fixes/edid/grub-honor-fmbp-edid.cfg "$pkgdir/etc/default/grub.d/50-honor-fmbp-edid.cfg"
+    install -Dm644 fixes/edid/README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+    install -Dm644 LICENSES/LicenseRef-OEM-firmware-derived.txt "$pkgdir/usr/share/licenses/$pkgname/LicenseRef-OEM-firmware-derived.txt"
+}

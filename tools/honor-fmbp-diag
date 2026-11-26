@@ -76,6 +76,26 @@ pkgver() {
     fi
 }
 
+report_panel_edid() {
+    # SHA-256 of fixes/edid/edp-hdr.bin; compare against the live DRM EDID.
+    local expected=4a52793ef951490a58bdd4fe14474ce7f34b41b1c6e2dd90ebea9249689c929c
+    local empty=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    local connector sum state found=0
+    for connector in "${1:-/sys/class/drm}"/card*-eDP-*; do
+        [[ -d $connector ]] || continue
+        found=1
+        if ! sum=$(sha256sum -- "$connector/edid" 2>/dev/null) || [[ ${sum%% *} == "$empty" ]]; then
+            state='EDID unavailable'
+        elif [[ ${sum%% *} == "$expected" ]]; then
+            state='project HDR EDID active'
+        else
+            state='active EDID differs from project HDR EDID'
+        fi
+        row "EDID ${connector##*/}" "$state"
+    done
+    (( found )) || row 'Internal panel EDID' 'no eDP connector found'
+}
+
 echo "## honor-fmbp-diag report"
 echo
 echo "_Generated $(date -u +%Y-%m-%dT%H:%MZ), root=${ROOT}_"
@@ -137,6 +157,7 @@ for m in huawei_wmi honor_fmbp_hwmon honor_fmbp_kbdlight acpi_call hid_multitouc
     row "module $m" "$(mod $m)"
 done
 if have dkms; then row "dkms" "$(dkms status 2>/dev/null | tr '\n' ';')"; fi
+report_panel_edid
 for p in libfprint fprintd thermald power-profiles-daemon tuned-ppd; do
     v=$(pkgver $p); [[ -n $v ]] && row "pkg $p" "$v"
 done
@@ -144,7 +165,11 @@ for f in /etc/udev/rules.d/*honor* /etc/udev/rules.d/*touchpad* /etc/udev/rules.
          /etc/udev/hwdb.d/*honor* /etc/udev/hwdb.d/*huawei* /etc/udev/hwdb.d/*gxt* \
          /usr/lib/udev/rules.d/*honor* /usr/lib/udev/hwdb.d/*honor* \
          /etc/dracut.conf.d/*honor* /etc/dracut.conf.d/*acpi* /usr/lib/dracut/dracut.conf.d/*honor* \
-         /usr/lib/honor-fmbp/acpi/dsdt.aml /boot/dsdt.aml /boot/*acpi*.img; do
+         /etc/initcpio/post/*honor* /etc/initcpio/post/*acpi* /etc/initcpio/install/*honor* \
+         /usr/lib/honor-fmbp/acpi/dsdt.aml /usr/lib/initcpio/acpi_override/dsdt-prebuilt.aml \
+         /etc/initcpio/acpi_override/honor-fmbp*.aml \
+         /boot/dsdt.aml /boot/*acpi*.img \
+         /usr/lib/firmware/edid/honor-fmbp/edp-hdr.bin /usr/lib/firmware/edid/*.bin; do
     [[ -e $f ]] && row "file" "\`$f\`"
 done
 for u in $(systemctl list-unit-files --no-legend 2>/dev/null | awk '/honor|touchscreen|battery-threshold/{print $1}'); do

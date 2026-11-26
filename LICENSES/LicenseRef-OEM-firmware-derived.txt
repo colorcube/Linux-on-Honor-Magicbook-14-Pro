@@ -5,3 +5,7 @@ copyright HONOR Device Co., Ltd. These files are redistributed to owners of the
 covered hardware as an interoperability fix, in line with the long-standing
 community practice of publishing corrected laptop DSDTs. Prefer building the
 table from your own firmware with dsdt/build.sh.
+
+The patched panel EDID (fixes/edid/edp-hdr.bin) is derived from the panel's OEM
+EDID with a CTA-861 HDR extension block added (contributed by denis-bb in
+https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/issues/16).

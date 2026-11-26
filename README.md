@@ -30,13 +30,17 @@ Tested on BIOS 1.13 (global), Fedora 44, kernel 7.3. Details:
 | Caps-Lock and mic-mute LEDs | ✅ | ✅ | [keyboard](docs/hardware/keyboard.md) |
 | Wi-Fi, Bluetooth, audio, webcam, lid, suspend (s2idle) | ✅ | ✅ | [docs/hardware/](docs/hardware/) |
 | Power button | ✅ hold ~0.5 s | ✅ | [power button](docs/hardware/power-button.md) |
-| HDR in GNOME/KDE | ❌ | EDID override (optional) | [display](docs/hardware/display.md) |
+| HDR in GNOME/KDE/Hyprland | ❌ | EDID override (optional) | [display](docs/hardware/display.md) |
 | Performance mode (Fn+P, 50 W clamp) | ❌ capped at 50 W | ✅ optional package `honor-fmbp-perf` (80–115 W) | [performance](docs/hardware/performance.md) |
 | S3 deep sleep | ❌ hardware is S0ix-only | hibernate works | [sleep](docs/hardware/sleep.md) |
 | Wi-Fi fails after warm reboot | open (#26) | — | [wifi](docs/hardware/wifi.md) |
 | IR camera / face unlock | — no IR camera in the 2025 model | — | |
 
-## Quickstart (Fedora)
+## Quickstart
+
+Installing from scratch on a live USB? See [docs/install/live-usb.md](docs/install/live-usb.md).
+
+### Fedora
 
 Disable **Secure Boot** in the firmware (F2) first. Then:
 
@@ -56,17 +60,36 @@ The packages come from the [COPR](https://copr.fedorainfracloud.org/coprs/colorc
 alternatives (`install.sh`) and uninstall instructions are in
 [docs/install/fedora.md](docs/install/fedora.md).
 
-**Other distributions:**
+### Arch Linux
+
+Run the following as a regular user:
+
+```bash
+sudo pacman -S --needed base-devel git linux-headers
+git clone --depth 1 https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro.git
+cd Linux-on-Honor-Magicbook-14-Pro
+./packaging/arch/install.sh
+sudo reboot
+honor-fmbp-diag
+```
+
+> Match the headers package to your kernel (`linux-headers` for `linux`,
+> `linux-lts-headers` for `linux-lts`, or the matching `*-headers` package for any
+> other kernel) so DKMS can compile the drivers.
+
+The script builds and installs the main hardware package, optional HDR EDID, and a
+matching fingerprint driver. See [docs/install/arch.md](docs/install/arch.md) for
+details, custom DSDT builds, and uninstall instructions.
+
+### Other distributions
+
 - **Ubuntu:** use drphilth's PPA ([honor-magicbook-pro-14-ubuntu](https://github.com/drphilth/honor-magicbook-pro-14-ubuntu)).
 - **Fedora-based with Secure Boot:** [Evernight Vista](https://copr.fedorainfracloud.org/coprs/evernightvista/evernight-vista)
   ships a kernel with the DSDT built in.
-- **Others:** `install.sh` also supports pacman/mkinitcpio and apt/initramfs-tools on a
-  best-effort basis.
+- **Others:** `install.sh` also supports apt/initramfs-tools on a best-effort basis.
 
 We're happy to build packages for other distributions if someone can test them, so
 please open an issue.
-
-**Installing from scratch / live USB:** [docs/install/live-usb.md](docs/install/live-usb.md).
 
 ## Reporting problems
 

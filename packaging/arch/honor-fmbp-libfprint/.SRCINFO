@@ -1,0 +1,34 @@
+pkgbase = honor-fmbp-libfprint
+	pkgdesc = libfprint with support for the HONOR MagicBook Pro 14 (FMB-P) FPC 10a5:9924 fingerprint sensor
+	pkgver = 1.94.100
+	pkgrel = 1
+	url = https://fprint.freedesktop.org/
+	arch = x86_64
+	license = LGPL-2.1-or-later
+	checkdepends = cairo
+	checkdepends = umockdev
+	makedepends = git
+	makedepends = glib2-devel
+	makedepends = gobject-introspection
+	makedepends = gtk-doc
+	makedepends = meson
+	makedepends = python-cairo
+	makedepends = python-gobject
+	makedepends = systemd
+	depends = libgcc
+	depends = glib2
+	depends = glibc
+	depends = libgudev
+	depends = libgusb
+	depends = openssl
+	depends = pixman
+	provides = libfprint=1.94.100
+	provides = libfprint-2.so
+	conflicts = libfprint
+	source = git+https://gitlab.freedesktop.org/libfprint/libfprint.git?signed#tag=v1.94.100
+	source = fpcmoc-10a5-9924-1.0.9.patch::https://github.com/colorcube/Linux-on-Honor-Magicbook-14-Pro/releases/download/v1.0.9/fpcmoc-10a5-9924-1.0.9.patch
+	validpgpkeys = D4C501DA48EB797A081750939449C2F50996635F
+	b2sums = 56cbe62a6d4b98d1de90f45bae8de605418802d1b4d8d5dc55a8557a65045b115df51daf8385decdebd8aea79c86103467d5a327cbd461030d450f0e15466d08
+	b2sums = 7f7fda0eef2d481043855d307ef232fd621ac9c6a8686940a4cbb5b1ab927fe1b015a0593a41460cfa32cc7636dcdf2fcd05853b5f0ab696e712305eac66dd99
+
+pkgname = honor-fmbp-libfprint
