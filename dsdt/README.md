@@ -62,8 +62,8 @@ redistributed to owners of this hardware as an interoperability fix.
 
 ## How the package picks the variant
 
-`honor-fmbp-dsdt` (Fedora COPR) ships the global and the Chinese table and selects one
-with `honor-fmbp-dsdt-select` (rules by mrueg):
+`honor-fmbp-dsdt` (Fedora COPR) and `honor-magicbook-pro-14` (Arch) ship the global and
+the Chinese table and select one with `honor-fmbp-dsdt-select` (rules by mrueg):
 
 | Live DSDT | Existing selection | Result |
 |---|---|---|
@@ -78,7 +78,7 @@ Force a variant with `echo chinese | sudo tee /etc/honor-fmbp/dsdt-force` and ru
 
 ## Installing the override
 
-`tools/install.sh --only dsdt` does this for you. To do it by hand on dracut systems
+`./install.sh --only dsdt` does this for you. To do it by hand on dracut systems
 (Fedora):
 
 ```bash
@@ -87,6 +87,10 @@ echo 'acpi_override="yes"
 acpi_table_dir="/usr/lib/honor-fmbp/acpi"' | sudo tee /etc/dracut.conf.d/10-honor-fmbp-dsdt.conf
 sudo dracut --force --regenerate-all
 ```
+
+On Arch (mkinitcpio), `honor-magicbook-pro-14` configures the native `acpi_override`
+hook automatically; see [docs/install/arch.md](../docs/install/arch.md#dsdt-overrides-and-local-builds)
+for manual/local builds.
 
 After a reboot, `journalctl -k | grep "Table Upgrade"` should show
 `override [DSDT-HONOR-ARL]`.
